@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Motrix | Manutenção & Abastecimento</title>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; position: relative; overflow: hidden; background: var(--bg-main);">
+        <!-- Background decoration -->
+        <div style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; background: var(--accent-orange); filter: blur(100px); opacity: 0.2; border-radius: 50%;"></div>
+        <div style="position: absolute; bottom: -50px; right: -50px; width: 200px; height: 200px; background: #00f2ff; filter: blur(100px); opacity: 0.2; border-radius: 50%;"></div>
+
+        <i data-lucide="shield-check" style="width: 56px; height: 56px; color: var(--accent-orange); margin-bottom: 20px; z-index: 1;"></i>
+        <h1 style="color: white; font-size: 38px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 8px; z-index: 1; line-height: 1;">MOTRIX</h1>
+        <p class="text-caption" style="margin-bottom: 32px; font-size: 15px; z-index: 1;">Gestão Inteligente de Veículos</p>
+        
+        <div class="glass-card" style="width: 100%; max-width: 380px; text-align: left; padding: 30px 20px; z-index: 1; border: 1px solid rgba(255,255,255,0.05);">
+            <h2 id="auth-title" style="color: white; font-size: 24px; font-weight: 800; margin-bottom: 20px; text-align: center;">Acessar Conta</h2>
+            <form id="form-login" onsubmit="handleAuth(event)">
+                <div class="form-group">
+                    <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">E-MAIL</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="seu@email.com" required style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">SENHA</label>
+                        <a href="#" id="link-forgot-pw" onclick="forgotPassword(event)" style="font-size: 11px; color: var(--accent-orange); text-decoration: none; font-weight: 600;">Esqueceu a senha?</a>
+                    </div>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box;">
+                    
+                    <div id="group-confirm-pw" style="display: none; margin-top: 24px;">
+                        <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">CONFIRMAR SENHA</label>
+                        <input type="password" id="login-password-confirm" class="form-control" placeholder="••••••••" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box; margin-top: 4px;">
+                    </div>
+                    
+                    <p id="login-errorMsg" class="text-caption" style="color: var(--danger); font-size: 12px; margin-top: 12px; display: none;">Credenciais inválidas.</p>
+                </div>
+                <button type="submit" id="btn-auth-submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 16px; font-weight: 800; text-transform: uppercase; background: linear-gradient(135deg, var(--accent-orange), #ff6b00); border: none; box-shadow: 0 4px 15px rgba(255,140,0,0.3);">Entrar Seguro</button>
+            </form>
+            <p class="text-caption" style="text-align: center; margin-top: 24px; font-size: 13px;">
+                <span id="text-toggle-auth">Não tem uma conta?</span>
+                <a href="#" id="link-toggle-auth" onclick="toggleAuthMode(event)" style="color: var(--accent-orange); font-weight: 700; text-decoration: none; margin-left: 5px;">Criar Conta Grátis</a>
+            </p>
+        </div>
+    </div>
+
+    <div id="app" style="display: none;">
+        <!-- HEADER -->
+        <header class="header-row" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div onclick="toggleVehiclePicker()" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <div>
+                    <p class="text-caption" style="text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Escolha o Veículo <i data-lucide="chevron-down" style="width: 12px; height: 12px; vertical-align: middle;"></i></p>
+                    <div id="stat-veh-model" class="title-large" style="font-size: 20px;">Carregando...</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="premium-badge" class="badge-alert" style="background: linear-gradient(135deg, #ffd700, #ff8c00); color: black; border: none; display: none;" onclick="becomePremium()">VIP</button>
+                <button class="btn-icon" onclick="toggleVehicleModal()" style="background: rgba(255,140,0,0.1); color: var(--accent-orange);">
+                    <i data-lucide="settings"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Vehicle Picker Modal -->
+        <div id="modal-vehicle-picker" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; padding: 20px; align-items: center; justify-content: center; display: none;">
+            <div class="glass-card" style="width: 100%; max-width: 400px; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 class="title-large" style="font-size: 18px;">Meus Veículos</h3>
+                    <button onclick="toggleVehiclePicker()" class="btn-icon"><i data-lucide="x"></i></button>
+                </div>
+                <div id="vehicle-picker-list">
+                    <!-- List of vehicles -->
+                </div>
+                <button class="btn-secondary" onclick="toggleVehiclePicker(); toggleVehicleModal();" style="margin-top: 15px; border-style: dashed;">+ Adicionar Novo Veículo</button>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <section id="view-dashboard" class="view-section active">
+            <!-- KM CARD -->
+            <div class="glass-card km-card">
+                <h4>KM ATUAL</h4>
+                <div id="stat-km-actual" class="value">0</div>
+                <p class="text-caption">hodômetro</p>
+            </div>
+
+            <!-- NEXT MAINTENANCE INFO (Always visible if exists) -->
+            <div id="next-maint-info-card" class="glass-card" style="display: none; background: rgba(255,140,0,0.05); border: 1px solid rgba(255,140,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p class="text-caption" style="text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Próxima Manutenção</p>
+                        <h3 id="dash-next-maint-type" style="font-size: 18px; color: var(--accent-orange);">--</h3>
+                    </div>
+                    <div style="text-align: right;">
+                        <div id="dash-next-maint-km" style="font-size: 20px; font-weight: 800;">--</div>
+                        <p class="text-caption">KM restantes</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAINTENANCE ALERTS CONTAINER -->
+            <div id="maintenance-alert-container" style="display: none; margin-bottom: 20px;">
+                <!-- Alerts are injected here as individual glass-cards -->
+            </div>
+
+            <!-- STATS GRID -->
+            <div class="stats-grid">
+                <div class="glass-card stat-item">
+                    <label>Consumo Médio</label>
+                    <div class="value"><span id="stat-avg-consumption">--</span> <small class="text-caption">km/L</small></div>
+                </div>
+                <div class="glass-card stat-item">
+                    <label>Custo/KM</label>
+                    <div class="value"><span id="stat-cost-km">R$ --</span> <small class="text-caption">por km</small></div>
+                </div>
+                <div class="glass-card stat-item">
+                    <label>Combustível</label>
+                    <div class="value"><span id="stat-total-fuel-month">R$ --</span> <small class="text-caption">este mês</small></div>
+                </div>
+                <div class="glass-card stat-item">
+                    <label>Manutenção</label>
+                    <div class="value"><span id="stat-total-maint-month">R$ --</span> <small class="text-caption">este mês</small></div>
+                </div>
+            </div>
+
+            <!-- COST DISTRIBUTION -->
+            <div class="glass-card cost-distribution">
+                <h4 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase;">Distribuição de Custos</h4>
+                <div class="progress-container">
+                    <div id="cost-progress-bar" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="legend-item">
+                    <div><span class="dot" style="background: var(--accent-orange);"></span>Combustível</div>
+                    <span id="dist-fuel-val">R$ 0,00</span>
+                </div>
+                <div class="legend-item">
+                    <div><span class="dot" style="background: var(--warning);"></span>Manutenção</div>
+                    <span id="dist-maint-val">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- REVENUE SUMMARY (New) -->
+            <div class="glass-card" style="margin-bottom: 20px; border-left: 4px solid #00f2ff;">
+                <label class="text-caption" style="text-transform: uppercase; font-weight: 700;">Faturamento Mensal</label>
+                <div id="stat-revenue-month" class="title-large" style="font-size: 28px; color: #00f2ff; margin-top: 8px;">R$ 0,00</div>
+            </div>
+
+            <!-- TOTAL MONTHLY CARD -->
+            <div class="glass-card">
+                <label class="text-caption" style="text-transform: uppercase; font-weight: 700;">Total gasto este mês</label>
+                <div id="stat-total-spent-month" class="title-large" style="font-size: 32px; color: var(--accent-orange); margin-top: 8px;">R$ 0,00</div>
+                <p id="stat-spent-breakdown" class="text-caption">Combustível: 0% | Manutenção: 0%</p>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="action-grid">
+                <button class="action-btn" onclick="switchView('fuel')">
+                    <i data-lucide="fuel"></i>
+                    Abastecimento
+                </button>
+                <button class="action-btn" onclick="switchView('maintenance')">
+                    <i data-lucide="wrench"></i>
+                    Manutenção
+                </button>
+            </div>
+
+            <!-- HISTORY LINK -->
+            <div class="history-link" onclick="switchView('history')">
+                <i data-lucide="file-text"></i>
+                Ver Histórico
+            </div>
+        </section>
+
+        <!-- HISTORY VIEW -->
+        <section id="view-history" class="view-section">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                        <i data-lucide="home"></i>
+                    </button>
+                    <h2 class="title-large" style="margin: 0; font-size: 20px;">📋 Histórico</h2>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-icon" style="background: rgba(255,140,0,0.1); color: var(--accent-orange);" onclick="exportHistoryPDF()" title="Exportar PDF">
+                        <i data-lucide="download"></i>
+                    </button>
+                    <button class="btn-icon" style="background: var(--accent-orange); color: var(--bg-main);" onclick="addNewFromHistory()">
+                        <i data-lucide="plus"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TABS -->
+            <div class="glass-card" style="display: flex; padding: 4px; border-radius: 12px; margin-bottom: 20px;">
+                <button id="tab-hist-fuel" class="btn-tab active" onclick="switchHistoryTab('fuel')" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+                    <i data-lucide="fuel" style="width: 16px;"></i> Combustível
+                </button>
+                <button id="tab-hist-maint" class="btn-tab" onclick="switchHistoryTab('maintenance')" style="flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; background: transparent; color: #888;">
+                    <i data-lucide="wrench" style="width: 16px;"></i> Manutenção
+                </button>
+            </div>
+
+            <!-- TIME FILTERS -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-filter active">Todos</button>
+                    <button class="btn-filter">7 dias</button>
+                    <button class="btn-filter">30 dias</button>
+                </div>
+                <span id="hist-records-count" class="text-caption">0 registros</span>
+            </div>
+
+            <!-- LIST CONTAINER -->
+            <div id="full-history-list">
+                <!-- Detailed cards injected via JS -->
+            </div>
+        </section>
+
+        <!-- FUEL LOG VIEW -->
+        <section id="view-fuel" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Abastecimento</h2>
+            </div>
+            <div class="glass-card">
+                <form id="form-fuel">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="fuel-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Combustível</label>
+                        <select id="fuel-type" class="form-control" required>
+                            <option value="" disabled selected>Selecionar</option>
+                            <option value="GNV">GNV</option>
+                            <option value="GASOLINA COMUM">GASOLINA COMUM</option>
+                            <option value="GASOLINA ADITIVADA">GASOLINA ADITIVADA</option>
+                            <option value="ETANOL">ETANOL</option>
+                            <option value="ETANOL ADITIVADA">ETANOL ADITIVADA</option>
+                            <option value="ELÉTRICO">ELÉTRICO</option>
+                            <option value="DIESEL S10">DIESEL S10</option>
+                            <option value="DIESEL S500">DIESEL S500</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Posto / Estabelecimento</label>
+                        <input type="text" id="fuel-station" class="form-control" placeholder="Ex: Shell Centro">
+                    </div>
+                    <div class="stats-grid" style="margin-bottom: 0;">
+                        <div class="form-group">
+                            <label>KM Atual</label>
+                            <input type="number" id="fuel-km" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Litros / kWh</label>
+                            <input type="number" step="0.01" id="fuel-liters" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Total (R$)</label>
+                        <input type="number" step="0.01" id="fuel-total" class="form-control" required>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn-primary" style="flex: 1; margin-top: 0;">Registrar</button>
+                        <button type="button" id="btn-cancel-fuel" class="btn-secondary" style="display: none; flex: 1; margin-top: 0;" onclick="cancelFuelEdit()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="fuel-history" style="margin-top: 24px;">
+                <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; font-weight: 700;">Histórico Recente</h3>
+            </div>
+        </section>
+        <section id="view-maintenance" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Manutenção</h2>
+            </div>
+            <div class="glass-card">
+                <form id="form-maintenance">
+                    <div class="stats-grid" style="margin-bottom: 0;">
+                        <div class="form-group">
+                            <label>Data do Serviço</label>
+                            <input type="date" id="maint-date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Estabelecimento</label>
+                            <input type="text" id="maint-station" class="form-control" placeholder="Ex: Oficina Mecânica X">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de Serviço</label>
+                        <input type="text" id="maint-type" class="form-control" placeholder="Ex: Troca de Óleo e Filtro" required>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom: 0;">
+                        <div class="form-group">
+                            <label>KM da Troca</label>
+                            <input type="number" id="maint-km" class="form-control" required oninput="calculateNextMaint()">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor Total (R$)</label>
+                            <input type="number" step="0.01" id="maint-cost" class="form-control" placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Observações</label>
+                        <textarea id="maint-obs" class="form-control" rows="2" placeholder="Ex: Marca do óleo, itens trocados..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Próxima Manutenção</label>
+                        <select id="maint-interval-type" class="form-control" onchange="toggleMaintIntervalFields()">
+                            <option value="none">Nenhum (Sem controle)</option>
+                            <option value="km" selected>Por Intervalo de KM</option>
+                            <option value="date">Por Data</option>
+                        </select>
+                    </div>
+
+                    <!-- KM Interval Fields -->
+                    <div id="maint-fields-km" class="stats-grid" style="margin-bottom: 0;">
+                        <div class="form-group">
+                            <label>Intervalo (KM)</label>
+                            <input type="number" id="maint-interval-val" class="form-control" value="10000" oninput="calculateNextMaint()">
+                        </div>
+                        <div class="form-group">
+                            <label>Próxima com (KM)</label>
+                            <input type="number" id="maint-next" class="form-control" readonly style="background: rgba(0,0,0,0.2); color: var(--accent-orange); font-weight: 700;">
+                        </div>
+                    </div>
+
+                    <!-- Date Interval Fields -->
+                    <div id="maint-fields-date" class="form-group" style="display: none;">
+                        <label>Data da Próxima Troca</label>
+                        <input type="date" id="maint-next-date" class="form-control">
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn-primary" style="flex: 1; margin-top: 10px;">Registrar Manutenção</button>
+                        <button type="button" id="btn-cancel-maint" class="btn-secondary" style="display: none; flex: 1; margin-top: 10px;" onclick="cancelMaintenanceEdit()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="maintenance-history" style="margin-top: 24px;">
+                <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; font-weight: 700;">Últimas Manutenções</h3>
+                <!-- History will be injected here -->
+            </div>
+        </section>
+
+        <!-- VEHICLE REGISTRATION (Initial Modal & Config) -->
+        <div id="modal-vehicle" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 2000; padding: var(--spacing-lg); overflow-y: auto; display: none;">
+            <div style="max-width: 500px; margin: 0 auto; padding-bottom: 40px;">
+                
+                <!-- SCREEN 1: VEHICLE LIST -->
+                <div id="veh-list-screen">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 20px; margin-bottom: 12px;">
+                        <button onclick="toggleVehicleModal(); switchView('dashboard');" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                            <i data-lucide="home"></i>
+                        </button>
+                        <h2 class="title-large" style="margin: 0;">Configurações</h2>
+                    </div>
+                    <p class="text-caption" style="margin-bottom: 24px;">Gerencie sua frota de veículos registrados.</p>
+                    
+                    <div id="veh-config-list" style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+                        <!-- JS injects small cards [Model | Plate] -->
+                    </div>
+
+                    <button class="btn-primary" onclick="showVehicleForm()" style="margin-bottom: 24px; border-style: dashed; background: transparent; border: 1px dashed var(--accent-orange); color: var(--accent-orange);">
+                        + Adicionar Novo Veículo
+                    </button>
+
+                    <div class="glass-card" style="border: 1px solid rgba(255, 71, 87, 0.3);">
+                        <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; color: var(--danger);">Zona de Perigo</h3>
+                        <p class="text-caption" style="margin-bottom: 16px;">Ao zerar os dados, todas as despesas (combustível, manutenção) e faturamento serão apagados permanentemente de TODOS os veículos.</p>
+                        
+                        <div id="premium-status-area" style="margin-bottom: 12px; display: none;">
+                            <button onclick="cancelPremium()" class="btn-secondary" style="border: 1px solid var(--accent-orange); color: var(--accent-orange); width: 100%; margin-bottom: 8px;">Sair do Plano VIP</button>
+                            <p class="text-caption" style="text-align: center; font-size: 10px; opacity: 0.6;">Você voltará ao limite de 1 veículo.</p>
+                        </div>
+
+                        <button onclick="promptResetAll()" class="btn-secondary" style="border: 1px solid var(--danger); color: var(--danger); width: 100%;">Zerar Todos os Dados</button>
+                    </div>
+                </div>
+
+                <!-- SCREEN 2: VEHICLE FORM (ADD/EDIT) -->
+                <div id="veh-form-screen" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 20px; margin-bottom: 12px;">
+                        <button onclick="showVehicleList()" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                            <i data-lucide="arrow-left"></i>
+                        </button>
+                        <h2 id="veh-form-title" class="title-large" style="margin: 0;">Veículo</h2>
+                    </div>
+                    <p class="text-caption" style="margin-bottom: 24px;">Altere os dados técnicos do veículo abaixo.</p>
+
+                    <div class="glass-card">
+                        <form id="form-vehicle">
+                            <input type="hidden" id="veh-id">
+                            <div class="stats-grid">
+                                <div class="form-group">
+                                    <label>Veículo / Modelo</label>
+                                    <input type="text" id="veh-model" class="form-control" placeholder="Ex: Corolla, Onix..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Placa</label>
+                                    <input type="text" id="veh-plate" class="form-control" placeholder="ABC-1234" required style="text-transform: uppercase;">
+                                </div>
+                            </div>
+                            
+                            <div class="stats-grid">
+                                <div class="form-group">
+                                    <label>RENAVAM</label>
+                                    <input type="text" id="veh-renavam" class="form-control" placeholder="00000000000">
+                                </div>
+                                <div class="form-group">
+                                    <label>Chassi</label>
+                                    <input type="text" id="veh-chassi" class="form-control" placeholder="000000..." style="text-transform: uppercase;">
+                                </div>
+                            </div>
+
+                            <div class="stats-grid">
+                                <div class="form-group">
+                                    <label>Cor</label>
+                                    <input type="text" id="veh-color" class="form-control" placeholder="Ex: Prata">
+                                </div>
+                                <div class="form-group">
+                                    <label>Nº Motor</label>
+                                    <input type="text" id="veh-motor" class="form-control" placeholder="Opcional">
+                                </div>
+                            </div>
+
+                            <div class="stats-grid">
+                                <div class="form-group">
+                                    <label>Ano</label>
+                                    <input type="number" id="veh-year" class="form-control" placeholder="2023" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>KM Inicial</label>
+                                    <input type="number" id="veh-km" class="form-control" placeholder="0" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Observações do Veículo</label>
+                                <textarea id="veh-obs" class="form-control" rows="2" placeholder="Ex: Detalhes específicos, acessórios..."></textarea>
+                            </div>
+                            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                <button type="button" id="btn-delete-vehicle" onclick="deleteVehicle()" class="btn-secondary" style="margin-top:0; flex:1; border: 1px solid var(--danger); color: var(--danger); display: none;">Excluir</button>
+                                <button type="submit" class="btn-primary" style="margin-top:0; flex:1;">Salvar Veículo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div><!-- Ends centered div -->
+        </div><!-- Ends modal-vehicle -->
+
+
+        <!-- BILLING (REVENUE) VIEW -->
+        <section id="view-billing" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Faturamento</h2>
+            </div>
+            <p class="text-caption" style="margin-bottom: 20px;">Acompanhe seus ganhos diários</p>
+
+            <div class="glass-card" style="background: #00f2ff; color: #0a0a0a; margin-bottom: 24px;">
+                <p class="text-caption" style="color: rgba(0,0,0,0.6); text-transform: uppercase; font-weight: 700;">Total de Ganhos</p>
+                <div id="stat-billing-total" class="title-large" style="font-size: 32px; margin-top: 8px;">R$ 0,00</div>
+            </div>
+
+            <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; font-weight: 700;">Resumo por Plataforma</h3>
+            <div id="billing-summary-by-platform" style="margin-bottom: 24px;">
+                <!-- Platform summaries injected here -->
+            </div>
+
+            <button onclick="switchView('billing-form')" class="btn-primary" style="background: #00f2ff; color: #0a0a0a; margin-bottom: 24px; font-weight: 700;">
+                + Adicionar Ganhos
+            </button>
+
+            <div id="billing-list">
+                <!-- Individual billing cards injected here -->
+            </div>
+        </section>
+
+        <!-- BILLING REGISTRATION FORM VIEW -->
+        <section id="view-billing-form" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                        <i data-lucide="home"></i>
+                    </button>
+                    <h2 class="title-large" style="margin: 0;">Novo Ganhos</h2>
+                </div>
+                <button onclick="switchView('billing')" class="btn-icon"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="glass-card">
+                <form id="form-billing">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="bill-date" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plataforma</label>
+                        <div id="bill-platform-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                            <button type="button" class="btn-chip-blue active" data-type="Uber">Uber</button>
+                            <button type="button" class="btn-chip-blue" data-type="99">99</button>
+                            <button type="button" class="btn-chip-blue" data-type="InDrive">InDrive</button>
+                            <button type="button" class="btn-chip-blue" data-type="Particular">Particular</button>
+                            <button type="button" class="btn-chip-blue" data-type="Outros">Outros</button>
+                        </div>
+                        <input type="hidden" id="bill-platform-value" value="Uber">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Valor dos Ganhos *</label>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: #888;">R$</span>
+                            <input type="number" step="0.01" id="bill-amount" class="form-control" style="padding-left: 40px;" placeholder="0,00" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>KM Rodados (opcional)</label>
+                        <input type="number" id="bill-km" class="form-control" placeholder="KM">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button type="button" onclick="switchView('billing')" class="btn-secondary" style="flex: 1;">Cancelar</button>
+                        <button type="submit" class="btn-primary" style="flex: 1; background: #00f2ff; color: #0a0a0a; font-weight: 700;">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- WALLET (DOCUMENTS) VIEW -->
+        <section id="view-wallet" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Minha Carteira</h2>
+            </div>
+            
+            <div class="glass-card" style="margin-bottom: 24px;">
+                <p class="text-caption" style="margin-bottom: 16px;">Guarde aqui todos os documentos importantes do seu veículo e motorista para acesso rápido.</p>
+                <button onclick="document.getElementById('doc-upload').click()" class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i data-lucide="upload"></i> Importar Documento
+                </button>
+                <input type="file" id="doc-upload" style="display: none;" onchange="handleDocUpload(event)" accept="image/*,application/pdf">
+                <p id="wallet-storage-msg" class="text-caption" style="margin-top: 10px; font-size: 10px; opacity: 0.6; text-align: center;">Formatos suportados: JPG, PNG, PDF (Máx 1MB)</p>
+            </div>
+            <div id="wallet-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Document cards will be injected here -->
+            </div>
+            
+            <!-- Document Preview Modal (Simple overlay) -->
+            <div id="doc-preview-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+                <div style="width: 100%; display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                    <button class="btn-icon" onclick="closeDocPreview()" style="background: white; color: black;"><i data-lucide="x"></i></button>
+                </div>
+                <div id="doc-preview-content" style="width: 100%; height: 80%; display: flex; justify-content: center; align-items: center; overflow: auto;">
+                    <!-- Image or Iframe injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- COSTS VIEW -->
+        <section id="view-costs" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Custos</h2>
+            </div>
+            <p class="text-caption" style="margin-bottom: 20px;">Acompanhe suas despesas</p>
+
+            <div class="glass-card" style="background: #ff7675; color: white; margin-bottom: 24px;">
+                <p class="text-caption" style="color: rgba(255,255,255,0.8); text-transform: uppercase; font-weight: 700;">Total de Custos</p>
+                <div id="stat-costs-total" class="title-large" style="font-size: 32px; margin-top: 8px;">R$ 0,00</div>
+            </div>
+
+            <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; font-weight: 700;">Resumo por Tipo</h3>
+            <div id="costs-summary-by-type" style="margin-bottom: 24px;">
+                <!-- Category summaries injected here -->
+            </div>
+
+            <button onclick="switchView('costs-form')" class="btn-primary" style="background: #ff7675; margin-bottom: 24px;">
+                + Adicionar Custo
+            </button>
+
+            <div id="costs-list">
+                <!-- Individual cost cards injected here -->
+            </div>
+        </section>
+
+        <!-- COST REGISTRATION FORM VIEW -->
+        <section id="view-costs-form" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                        <i data-lucide="home"></i>
+                    </button>
+                    <h2 class="title-large" style="margin: 0;">Novo Custo</h2>
+                </div>
+                <button onclick="switchView('costs')" class="btn-icon"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="glass-card">
+                <form id="form-costs">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="cost-date" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de Custo</label>
+                        <div id="cost-type-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                            <button type="button" class="btn-chip active" data-type="Combustível">⛽ Combustível</button>
+                            <button type="button" class="btn-chip" data-type="Manutenção">🔧 Manutenção</button>
+                            <button type="button" class="btn-chip" data-type="Pedágio">🛣️ Pedágio</button>
+                            <button type="button" class="btn-chip" data-type="Estacionamento">🅿️ Estacionamento</button>
+                            <button type="button" class="btn-chip" data-type="Limpeza">✨ Limpeza</button>
+                            <button type="button" class="btn-chip" data-type="Seguro">🛡️ Seguro</button>
+                            <button type="button" class="btn-chip" data-type="IPVA">📋 IPVA</button>
+                            <button type="button" class="btn-chip" data-type="Outro">⚙️ Outro</button>
+                        </div>
+                        <input type="hidden" id="cost-type-value" value="Combustível">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Valor *</label>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: #888;">R$</span>
+                            <input type="number" step="0.01" id="cost-amount" class="form-control" style="padding-left: 40px;" placeholder="0,00" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Descrição (opcional)</label>
+                        <input type="text" id="cost-desc" class="form-control" placeholder="Ex: Shell, Pneu, etc...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Observação (opcional)</label>
+                        <textarea id="cost-obs" class="form-control" rows="3" placeholder="Adicione uma nota..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button type="button" onclick="switchView('costs')" class="btn-secondary" style="flex: 1;">Cancelar</button>
+                        <button type="submit" class="btn-primary" style="flex: 1; background: #ff7675;">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ANALYTICS VIEW -->
+        <section id="view-analytics" class="view-section">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 24px;">
+                <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
+                    <i data-lucide="home"></i>
+                </button>
+                <h2 class="title-large" style="margin: 0;">Análises</h2>
+            </div>
+            
+            <div id="analytics-locked" class="glass-card" style="text-align: center; padding: 40px 20px; display: none;">
+                <i data-lucide="lock" style="width: 48px; height: 48px; color: var(--accent-orange); margin-bottom: 16px;"></i>
+                <h3 class="title-large" style="font-size: 20px;">Recurso Premium</h3>
+                <p class="text-caption" style="margin-bottom: 24px;">Assine o Motrix VIP para desbloquear gráficos detalhados de lucro, faturamento e desempenho.</p>
+                <button class="btn-primary" onclick="becomePremium()">Seja Premium agora</button>
+            </div>
+
+            <div id="analytics-content">
+                <!-- Period Filter -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="text-caption" style="text-transform: uppercase; font-weight: 700;">Período do Relatório</label>
+                    <select id="ana-period-select" class="form-control" onchange="renderAnalytics()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); margin-top: 8px;">
+                        <option value="today">Hoje</option>
+                        <option value="week">Esta Semana</option>
+                        <option value="month" selected>Este Mês</option>
+                        <option value="year">Este Ano</option>
+                        <option value="all">Histórico Completo</option>
+                        <option value="custom">Personalizado (Escolher Período)</option>
+                    </select>
+                </div>
+
+                <!-- Custom Range Inputs (Hidden by default) -->
+                <div id="ana-custom-range" class="stats-grid" style="display: none; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label class="text-caption">De</label>
+                        <input type="date" id="ana-start-date" class="form-control" onchange="renderAnalytics()">
+                    </div>
+                    <div class="form-group">
+                        <label class="text-caption">Até</label>
+                        <input type="date" id="ana-end-date" class="form-control" onchange="renderAnalytics()">
+                    </div>
+                </div>
+
+                <div class="glass-card" style="background: linear-gradient(135deg, #00f2ff 0%, #00d2ff 100%); color: black; margin-bottom: 24px;">
+                    <p class="text-caption" style="color: rgba(0,0,0,0.6); text-transform: uppercase; font-weight: 700;">Lucro Líquido Real</p>
+                    <div id="ana-profit-net" class="title-large" style="font-size: 32px; margin-top: 8px;">R$ 0,00</div>
+                    <p id="ana-profit-msg" style="font-size: 11px; margin-top: 4px; opacity: 0.8;">(Faturamento - Custos Totais)</p>
+                </div>
+                
+                <div class="glass-card">
+                    <h3 class="text-caption" style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700;">Desempenho Semanal</h3>
+                    <div style="height: 200px; width: 100%;">
+                        <canvas id="chart-revenue-vs-costs"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3 class="text-caption" style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700;">Distribuição de Despesas</h3>
+                    <div style="height: 250px; width: 100%; display: flex; justify-content: center;">
+                        <canvas id="chart-costs-breakdown"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3 class="text-caption" style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700;">Evolução de Consumo (km/L)</h3>
+                    <div style="height: 200px; width: 100%;">
+                        <canvas id="chart-fuel-efficiency"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- FLEET VIEW -->
+        <section id="view-fleet" class="view-section">
+            <div class="header-row" style="margin-bottom: 24px; padding: 20px; background: rgba(255,140,0,0.05); border-radius: 12px; border: 1px solid rgba(255,140,0,0.1);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="btn-icon" onclick="switchView('dashboard')" style="background: rgba(255,255,255,0.05); color: #888;">
+                        <i data-lucide="home"></i>
+                    </button>
+                    <h2 class="title-large" style="margin: 0; font-size: 20px;">Visão Geral da Frota</h2>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="glass-card stat-item" style="border-left: 3px solid var(--accent-orange); padding: 15px;">
+                    <label style="font-size: 10px;">Gasto Total Combustível</label>
+                    <div class="value" id="fleet-fuel-total" style="font-size: 20px;">R$ 0,00</div>
+                    <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
+                </div>
+                <div class="glass-card stat-item" style="border-left: 3px solid var(--warning); padding: 15px;">
+                    <label style="font-size: 10px;">Gasto Total Manutenção</label>
+                    <div class="value" id="fleet-maint-total" style="font-size: 20px;">R$ 0,00</div>
+                    <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                    <i data-lucide="alert-triangle" style="width: 14px; color: var(--warning);"></i> 
+                    Próximas Manutenções (Toda Frota)
+                </h3>
+                <div id="fleet-alerts-list">
+                    <!-- Alerts for all vehicles loaded here -->
+                </div>
+            </div>
+            
+            <div class="glass-card">
+                <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px;">Comparativo por Veículo</h3>
+                <div id="fleet-vehicle-summary">
+                    <!-- Cards per vehicle with their specific totals -->
+                </div>
+            </div>
+        </section>
+
+        <!-- BOTTOM NAVIGATION -->
+        <footer class="bottom-nav">
+            <div class="nav-item active" onclick="switchView('dashboard')">
+                <i data-lucide="home"></i>
+                <span>Início</span>
+            </div>
+            <div class="nav-item" onclick="switchView('fleet')">
+                <i data-lucide="car"></i>
+                <span>Frota</span>
+            </div>
+            <div class="nav-item" onclick="switchView('billing')">
+                <i data-lucide="banknote"></i>
+                <span>Ganhos</span>
+            </div>
+            <div class="nav-item" onclick="switchView('costs')">
+                <i data-lucide="layers"></i>
+                <span>Custos</span>
+            </div>
+            <div class="nav-item" onclick="switchView('analytics')">
+                <i data-lucide="bar-chart-3"></i>
+                <span>Análise</span>
+            </div>
+            <div class="nav-item" onclick="switchView('wallet')">
+                <i data-lucide="wallet"></i>
+                <span>Carteira</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- SUPABASE CLIENT & CONFIG -->
+    <script src="supabase.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

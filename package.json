@@ -1,0 +1,10 @@
+{
+  "name": "motrix",
+  "version": "1.0.0",
+  "description": "Controle de manutenção e abastecimento para motoristas profissionais",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y http-server ./"
+  },
+  "dependencies": {}
+}
