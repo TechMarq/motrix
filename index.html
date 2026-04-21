@@ -11,9 +11,12 @@
     <!-- jsPDF & AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <!-- Firebase JS -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -387,6 +390,12 @@
                     <button class="btn-primary" onclick="showVehicleForm()" style="margin-bottom: 24px; border-style: dashed; background: transparent; border: 1px dashed var(--accent-orange); color: var(--accent-orange);">
                         + Adicionar Novo Veículo
                     </button>
+
+                    <div class="glass-card" style="margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1);">
+                        <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase;">Minha Conta</h3>
+                        <p class="text-caption" id="auth-email-display" style="margin-bottom: 16px;">Conectado</p>
+                        <button onclick="window.db.auth.logout()" class="btn-secondary" style="width: 100%; border: 1px solid rgba(255,255,255,0.2);">Sair da Conta (Logout)</button>
+                    </div>
 
                     <div class="glass-card" style="border: 1px solid rgba(255, 71, 87, 0.3);">
                         <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; color: var(--danger);">Zona de Perigo</h3>
@@ -811,15 +820,15 @@
                 <i data-lucide="bar-chart-3"></i>
                 <span>Análise</span>
             </div>
-            <div class="nav-item" onclick="switchView('wallet')">
+            <div class="nav-item" style="opacity: 0.5; pointer-events: none; cursor: not-allowed; filter: grayscale(1);">
                 <i data-lucide="wallet"></i>
                 <span>Carteira</span>
             </div>
         </footer>
     </div>
 
-    <!-- SUPABASE CLIENT & CONFIG -->
-    <script src="supabase.js"></script>
+    <!-- FIREBASE CLIENT & CONFIG -->
+    <script src="firebase.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

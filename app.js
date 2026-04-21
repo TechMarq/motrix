@@ -317,7 +317,7 @@ function switchView(viewId) {
         const text = item.querySelector('span')?.innerText.toLowerCase();
         const mapping = {
             'dashboard': 'início',
-            'wallet': 'carteira',
+            // 'wallet': 'carteira',
             'billing': 'ganhos',
             'fleet': 'frota',
             'costs': 'custos',
