@@ -61,7 +61,7 @@
 
     <div id="app" style="display: none;">
         <!-- HEADER -->
-        <header class="header-row" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start;">
+        <header class="header-row" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
             <div onclick="toggleVehiclePicker()" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <div>
                     <p class="text-caption" style="text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Escolha o Veículo <i data-lucide="chevron-down" style="width: 12px; height: 12px; vertical-align: middle;"></i></p>
@@ -92,97 +92,95 @@
 
         <!-- DASHBOARD VIEW -->
         <section id="view-dashboard" class="view-section active">
-            <!-- KM CARD -->
-            <div class="glass-card km-card">
-                <h4>KM ATUAL</h4>
-                <div id="stat-km-actual" class="value">0</div>
-                <p class="text-caption">hodômetro</p>
-            </div>
+            
+            <!-- TOP ROW: KM & NEXT MAINT -->
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-bottom: 8px;">
+                <div class="glass-card card-compact km-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: center;">
+                    <h4>KM ATUAL</h4>
+                    <div id="stat-km-actual" class="value" style="font-size: 26px;">0</div>
+                    <p class="text-caption" style="font-size: 10px;">hodômetro</p>
+                </div>
 
-            <!-- NEXT MAINTENANCE INFO (Always visible if exists) -->
-            <div id="next-maint-info-card" class="glass-card" style="display: none; background: rgba(255,140,0,0.05); border: 1px solid rgba(255,140,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <p class="text-caption" style="text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Próxima Manutenção</p>
-                        <h3 id="dash-next-maint-type" style="font-size: 18px; color: var(--accent-orange);">--</h3>
-                    </div>
-                    <div style="text-align: right;">
-                        <div id="dash-next-maint-km" style="font-size: 20px; font-weight: 800;">--</div>
-                        <p class="text-caption">KM restantes</p>
+                <div id="next-maint-info-card" class="glass-card card-compact" style="display: none; background: rgba(255,140,0,0.05); border: 1px solid rgba(255,140,0,0.1); margin-bottom: 0;">
+                    <p class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 10px; margin-bottom: 2px;">Próxima Manutenção</p>
+                    <h3 id="dash-next-maint-type" style="font-size: 13px; color: var(--accent-orange); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 2px;">
+                        <span id="dash-next-maint-km" style="font-size: 18px; font-weight: 800;">--</span>
+                        <span class="text-caption" style="font-size: 9px;">KM rest.</span>
                     </div>
                 </div>
             </div>
 
             <!-- MAINTENANCE ALERTS CONTAINER -->
-            <div id="maintenance-alert-container" style="display: none; margin-bottom: 20px;">
-                <!-- Alerts are injected here as individual glass-cards -->
+            <div id="maintenance-alert-container" style="display: none; margin-bottom: 8px;">
+                <!-- Alerts are injected here -->
             </div>
 
-            <!-- STATS GRID -->
-            <div class="stats-grid">
-                <div class="glass-card stat-item">
-                    <label>Consumo Médio</label>
-                    <div class="value"><span id="stat-avg-consumption">--</span> <small class="text-caption">km/L</small></div>
+            <!-- STATS GRID (Reduced padding) -->
+            <div class="stats-grid" style="gap: 8px; margin-bottom: 8px;">
+                <div class="glass-card card-compact stat-item">
+                    <label style="font-size: 9px;">Consumo Médio</label>
+                    <div class="value" style="font-size: 15px;"><span id="stat-avg-consumption">--</span> <small style="font-size: 10px;">km/L</small></div>
                 </div>
-                <div class="glass-card stat-item">
-                    <label>Custo/KM</label>
-                    <div class="value"><span id="stat-cost-km">R$ --</span> <small class="text-caption">por km</small></div>
+                <div class="glass-card card-compact stat-item">
+                    <label style="font-size: 9px;">Custo/KM</label>
+                    <div class="value" style="font-size: 15px;"><span id="stat-cost-km">R$ --</span></div>
                 </div>
-                <div class="glass-card stat-item">
-                    <label>Combustível</label>
-                    <div class="value"><span id="stat-total-fuel-month">R$ --</span> <small class="text-caption">este mês</small></div>
+                <div class="glass-card card-compact stat-item">
+                    <label style="font-size: 9px;">Combustível</label>
+                    <div class="value" style="font-size: 15px;"><span id="stat-total-fuel-month">R$ --</span></div>
                 </div>
-                <div class="glass-card stat-item">
-                    <label>Manutenção</label>
-                    <div class="value"><span id="stat-total-maint-month">R$ --</span> <small class="text-caption">este mês</small></div>
+                <div class="glass-card card-compact stat-item">
+                    <label style="font-size: 9px;">Manutenção</label>
+                    <div class="value" style="font-size: 15px;"><span id="stat-total-maint-month">R$ --</span></div>
                 </div>
             </div>
 
-            <!-- COST DISTRIBUTION -->
-            <div class="glass-card cost-distribution">
-                <h4 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase;">Distribuição de Custos</h4>
-                <div class="progress-container">
+            <!-- FINANCIAL SUMMARY CARD (Merged Revenue & Expenses) -->
+            <div class="glass-card card-compact" style="border-left: 4px solid #00f2ff; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <label class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 9px;">Faturamento (Mês)</label>
+                        <div id="stat-revenue-month" style="font-size: 20px; font-weight: 800; color: #00f2ff;">R$ 0,00</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <label class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 9px;">Total Gasto (Mês)</label>
+                        <div id="stat-total-spent-month" style="font-size: 20px; font-weight: 800; color: var(--accent-orange);">R$ 0,00</div>
+                    </div>
+                </div>
+                
+                <!-- Compact progress bar for distribution -->
+                <div class="progress-container" style="height: 6px; margin: 8px 0;">
                     <div id="cost-progress-bar" class="progress-bar" style="width: 0%"></div>
                 </div>
-                <div class="legend-item">
-                    <div><span class="dot" style="background: var(--accent-orange);"></span>Combustível</div>
-                    <span id="dist-fuel-val">R$ 0,00</span>
+                <p id="stat-spent-breakdown" class="text-caption" style="font-size: 10px; text-align: center;">Combustível: 0% | Manutenção: 0%</p>
+            </div>
+
+            <!-- NEW: NET PROFIT CARD -->
+            <div class="glass-card card-compact" style="background: linear-gradient(135deg, #00ff88 0%, #00d2ff 100%); color: #000; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <label class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 10px; color: rgba(0,0,0,0.5);">Lucro Líquido Real (Mês)</label>
+                    <div id="stat-profit-month" style="font-size: 26px; font-weight: 800;">R$ 0,00</div>
                 </div>
-                <div class="legend-item">
-                    <div><span class="dot" style="background: var(--warning);"></span>Manutenção</div>
-                    <span id="dist-maint-val">R$ 0,00</span>
+                <div style="background: rgba(0,0,0,0.08); padding: 8px; border-radius: 12px;">
+                    <i data-lucide="trending-up" style="width: 28px; height: 28px;"></i>
                 </div>
             </div>
 
-            <!-- REVENUE SUMMARY (New) -->
-            <div class="glass-card" style="margin-bottom: 20px; border-left: 4px solid #00f2ff;">
-                <label class="text-caption" style="text-transform: uppercase; font-weight: 700;">Faturamento Mensal</label>
-                <div id="stat-revenue-month" class="title-large" style="font-size: 28px; color: #00f2ff; margin-top: 8px;">R$ 0,00</div>
+            <!-- MAINTENANCE REMINDERS (Replaces Recent Activity) -->
+            <div style="margin-top: 10px;">
+                <h3 class="text-caption" style="margin-bottom: 10px; text-transform: uppercase; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Lembretes de Manutenção
+                </h3>
+                <div id="maintenance-reminders-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Injected via JS -->
+                    <p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Tudo em dia! Nenhuma manutenção próxima.</p>
+                </div>
             </div>
 
-            <!-- TOTAL MONTHLY CARD -->
-            <div class="glass-card">
-                <label class="text-caption" style="text-transform: uppercase; font-weight: 700;">Total gasto este mês</label>
-                <div id="stat-total-spent-month" class="title-large" style="font-size: 32px; color: var(--accent-orange); margin-top: 8px;">R$ 0,00</div>
-                <p id="stat-spent-breakdown" class="text-caption">Combustível: 0% | Manutenção: 0%</p>
-            </div>
-
-            <!-- ACTION BUTTONS -->
-            <div class="action-grid">
-                <button class="action-btn" onclick="switchView('fuel')">
-                    <i data-lucide="fuel"></i>
-                    Abastecimento
-                </button>
-                <button class="action-btn" onclick="switchView('maintenance')">
-                    <i data-lucide="wrench"></i>
-                    Manutenção
-                </button>
-            </div>
-
-            <!-- HISTORY LINK -->
-            <div class="history-link" onclick="switchView('history')">
+            <div class="history-link" onclick="switchView('history')" style="margin-bottom: 10px; margin-top: 15px;">
                 <i data-lucide="file-text"></i>
-                Ver Histórico
+                Ver Histórico Completo
             </div>
         </section>
 
@@ -391,10 +389,20 @@
                         + Adicionar Novo Veículo
                     </button>
 
-                    <div class="glass-card" style="margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1);">
-                        <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase;">Minha Conta</h3>
-                        <p class="text-caption" id="auth-email-display" style="margin-bottom: 16px;">Conectado</p>
-                        <button onclick="window.db.auth.logout()" class="btn-secondary" style="width: 100%; border: 1px solid rgba(255,255,255,0.2);">Sair da Conta (Logout)</button>
+                    <div class="glass-card" style="margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); padding: 20px;">
+                        <h3 class="text-caption" style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Minha Conta</h3>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-orange); display: flex; align-items: center; justify-content: center; color: black;">
+                                <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <div style="overflow: hidden;">
+                                <p class="text-caption" style="margin-bottom: 2px; font-size: 11px;">E-MAIL LOGADO</p>
+                                <p id="auth-email-display" style="font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;">Carregando...</p>
+                            </div>
+                        </div>
+                        <button onclick="window.db.auth.logout()" class="btn-secondary" style="width: 100%; border: 1px solid rgba(255,255,255,0.2); margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Sair da Conta
+                        </button>
                     </div>
 
                     <div class="glass-card" style="border: 1px solid rgba(255, 71, 87, 0.3);">
@@ -798,6 +806,19 @@
             </div>
         </section>
 
+        <!-- QUICK ACTIONS MENU (Appears above FAB) -->
+        <div id="quick-actions-overlay" class="quick-actions-overlay" onclick="toggleQuickActions()"></div>
+        <div id="quick-actions-menu" class="quick-actions-menu">
+            <button class="quick-action-item" onclick="switchView('fuel'); toggleQuickActions();">
+                <div class="icon-circle fuel"><i data-lucide="fuel"></i></div>
+                <span>Abastecer</span>
+            </button>
+            <button class="quick-action-item" onclick="switchView('maintenance'); toggleQuickActions();">
+                <div class="icon-circle maint"><i data-lucide="wrench"></i></div>
+                <span>Manutenção</span>
+            </button>
+        </div>
+
         <!-- BOTTOM NAVIGATION -->
         <footer class="bottom-nav">
             <div class="nav-item active" onclick="switchView('dashboard')">
@@ -808,6 +829,14 @@
                 <i data-lucide="car"></i>
                 <span>Frota</span>
             </div>
+            
+            <!-- CENTRAL FAB -->
+            <div id="fab-main" class="nav-fab" onclick="toggleQuickActions()">
+                <div class="fab-circle">
+                    <i data-lucide="plus"></i>
+                </div>
+            </div>
+
             <div class="nav-item" onclick="switchView('billing')">
                 <i data-lucide="banknote"></i>
                 <span>Ganhos</span>
@@ -815,14 +844,6 @@
             <div class="nav-item" onclick="switchView('costs')">
                 <i data-lucide="layers"></i>
                 <span>Custos</span>
-            </div>
-            <div class="nav-item" onclick="switchView('analytics')">
-                <i data-lucide="bar-chart-3"></i>
-                <span>Análise</span>
-            </div>
-            <div class="nav-item" style="opacity: 0.5; pointer-events: none; cursor: not-allowed; filter: grayscale(1);">
-                <i data-lucide="wallet"></i>
-                <span>Carteira</span>
             </div>
         </footer>
     </div>

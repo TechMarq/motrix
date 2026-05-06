@@ -139,6 +139,11 @@ async function initializeApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
 
+    if (currentUser && currentUser.email) {
+        const emailEl = document.getElementById('auth-email-display');
+        if (emailEl) emailEl.innerText = currentUser.email;
+    }
+
     loadState(); // Offline data (if any)
     
     // FETCH REALCLOUD VEHICLES
@@ -207,6 +212,7 @@ async function initializeApp() {
     }
 
     lucide.createIcons();
+    recalculateConsumptions();
     updateDashboardUI();
     
     // Set default dates for forms
@@ -471,16 +477,6 @@ document.getElementById('form-fuel').addEventListener('submit', async (e) => {
         document.getElementById('btn-cancel-fuel').style.display = 'none';
     } else {
         // CREATE NEW LOG
-        let consumption = 0;
-        const vehicleFuelLogs = state.fuelLogs.filter(l => l.vehicleId === state.activeVehicleId);
-        if (vehicleFuelLogs.length > 0) {
-            const lastLog = vehicleFuelLogs.sort((a, b) => b.km - a.km)[0];
-            const kmDriven = km - lastLog.km;
-            if (kmDriven > 0) {
-                consumption = kmDriven / liters;
-            }
-        }
-
         const newLog = {
             vehicle_id: state.activeVehicleId,
             date: date + 'T12:00:00Z',
@@ -489,7 +485,7 @@ document.getElementById('form-fuel').addEventListener('submit', async (e) => {
             km: km,
             liters: liters,
             total: total,
-            consumption: consumption
+            consumption: 0 // Will be calculated by recalculateConsumptions()
         };
 
         const { data, error } = await window.db.fuel.add(newLog);
@@ -499,6 +495,7 @@ document.getElementById('form-fuel').addEventListener('submit', async (e) => {
             const savedLog = data[0];
             savedLog.vehicleId = savedLog.vehicle_id;
             state.fuelLogs.unshift(savedLog);
+            recalculateConsumptions();
         }
     }
 
@@ -527,7 +524,7 @@ document.getElementById('form-fuel').addEventListener('submit', async (e) => {
     e.target.reset();
     document.getElementById('fuel-date').value = new Date().toISOString().split('T')[0];
     renderFuelHistory();
-    switchView('dashboard');
+    switchView('fuel');
 });
 
 function recalculateConsumptions() {
@@ -539,7 +536,7 @@ function recalculateConsumptions() {
         if (i < sorted.length - 1) {
             const nextLog = sorted[i+1];
             const kmDriven = sorted[i].km - nextLog.km;
-            sorted[i].consumption = kmDriven > 0 ? kmDriven / sorted[i].liters : 0;
+            sorted[i].consumption = (kmDriven > 0 && sorted[i].liters > 0) ? kmDriven / sorted[i].liters : 0;
         } else {
             sorted[i].consumption = 0; // First log (oldest KM) has no consumption
         }
@@ -717,7 +714,7 @@ document.getElementById('form-maintenance').addEventListener('submit', async (e)
     document.getElementById('maint-date').value = new Date().toISOString().split('T')[0];
     toggleMaintIntervalFields();
     renderMaintenanceHistory();
-    switchView('dashboard');
+    switchView('maintenance');
 });
 
 function editMaintenance(id) {
@@ -1101,6 +1098,75 @@ function updateDashboardUI() {
         
         updateText('stat-spent-breakdown', `Combustível: ${fuelPerc.toFixed(0)}% | Manutenção: ${maintPerc.toFixed(0)}%`);
 
+        // NEW: Net Profit Logic
+        const netProfitMonth = totalRevenueMonth - totalSpentMonth;
+        updateText('stat-profit-month', `R$ ${netProfitMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+        
+        const profitCard = document.getElementById('stat-profit-month')?.parentElement?.parentElement;
+        if (profitCard) {
+            if (netProfitMonth < 0) {
+                profitCard.style.background = 'linear-gradient(135deg, #ff4d4d 0%, #ff8c00 100%)';
+            } else {
+                profitCard.style.background = 'linear-gradient(135deg, #00ff88 0%, #00d2ff 100%)';
+            }
+        }
+
+        // NEW: Maintenance Reminders Logic
+        const remindersList = document.getElementById('maintenance-reminders-list');
+        if (remindersList) {
+            const upcomingMaints = (state.maintenanceLogs || [])
+                .filter(m => m.vehicleId === state.activeVehicleId && (
+                    (m.intervalType === 'km' && m.next > activeVehicle.km_actual) ||
+                    (m.intervalType === 'date' && m.nextDate && new Date(m.nextDate) > new Date())
+                ))
+                .sort((a, b) => {
+                    if (a.intervalType === 'km' && b.intervalType === 'km') return a.next - b.next;
+                    if (a.intervalType === 'date' && b.intervalType === 'date') return new Date(a.nextDate) - new Date(b.nextDate);
+                    return 0;
+                })
+                .slice(0, 3);
+
+            if (upcomingMaints.length > 0) {
+                remindersList.innerHTML = '';
+                upcomingMaints.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'glass-card card-compact';
+                    div.style.marginBottom = '0';
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+                    div.style.borderLeft = '3px solid var(--warning)';
+                    
+                    let timeLeft = '';
+                    if (m.intervalType === 'km') {
+                        const kmDiff = m.next - activeVehicle.km_actual;
+                        timeLeft = `${kmDiff.toLocaleString('pt-BR')} KM`;
+                    } else {
+                        const dateDiff = Math.ceil((new Date(m.nextDate) - new Date()) / (1000 * 60 * 60 * 24));
+                        timeLeft = `${dateDiff} dias`;
+                    }
+
+                    div.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,184,0,0.1); display: flex; align-items: center; justify-content: center; color: var(--warning);">
+                                <i data-lucide="wrench" style="width: 16px; height: 16px;"></i>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 11px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${m.type}</span>
+                                <span class="text-caption" style="font-size: 9px;">Vence em: ${m.intervalType === 'km' ? m.next.toLocaleString('pt-BR') + ' KM' : new Date(m.nextDate).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 12px; font-weight: 800; color: var(--accent-orange); display: block;">${timeLeft}</span>
+                            <span style="font-size: 8px; text-transform: uppercase; opacity: 0.6;">Restantes</span>
+                        </div>
+                    `;
+                    remindersList.appendChild(div);
+                });
+                lucide.createIcons();
+            }
+        }
+
 
         // Avg Consumption and Cost/KM
         const vehicleFuelLogs = (state.fuelLogs || []).filter(log => log.vehicleId === state.activeVehicleId);
@@ -1218,7 +1284,15 @@ function renderFuelHistory() {
     
     list.innerHTML = '<h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase;">Histórico Recente</h3>';
     
-    state.fuelLogs.filter(log => log.vehicleId === state.activeVehicleId).slice(0, 10).forEach(log => {
+    state.fuelLogs
+        .filter(log => log.vehicleId === state.activeVehicleId)
+        .sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            if (dateA - dateB !== 0) return dateB - dateA;
+            return b.km - a.km;
+        })
+        .slice(0, 10).forEach(log => {
         const dateRaw = log.date.split('T')[0];
         const [y, m, d] = dateRaw.split('-');
         const formattedDate = `${d}/${m}/${y}`;
@@ -2321,5 +2395,21 @@ function promptResetAll() {
         location.reload();
     } else if (userInput !== null) {
         alert("Código incorreto. Operação cancelada.");
+    }
+}
+
+// QUICK ACTIONS LOGIC
+function toggleQuickActions() {
+    const overlay = document.getElementById('quick-actions-overlay');
+    const fab = document.getElementById('fab-main');
+    
+    const isActive = overlay.classList.contains('active');
+    
+    if (isActive) {
+        overlay.classList.remove('active');
+        fab.classList.remove('active');
+    } else {
+        overlay.classList.add('active');
+        fab.classList.add('active');
     }
 }
