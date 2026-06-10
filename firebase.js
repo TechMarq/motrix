@@ -298,5 +298,45 @@ window.db = {
                 return { error: null };
             } catch (error) { return { error }; }
         }
+    },
+    jornadas: {
+        async getAll() {
+            try {
+                if(!currentUser) return {data: [], error: null};
+                const snapshot = await fbDb.collection('jornadas')
+                    .where('user_id', '==', currentUser.uid)
+                    .orderBy('created_at', 'desc').get();
+                return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
+            } catch (error) { 
+                if (error.message.includes("requires an index")) {
+                    const snapshot = await fbDb.collection('jornadas').where('user_id', '==', currentUser.uid).get();
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+                    return { data, error: null };
+                }
+                return { data: null, error }; 
+            }
+        },
+        async add(jornada) {
+            try {
+                jornada.user_id = currentUser.uid;
+                jornada.created_at = new Date().toISOString();
+                const docRef = await fbDb.collection('jornadas').add(jornada);
+                jornada.id = docRef.id;
+                return { data: [jornada], error: null };
+            } catch (error) { return { data: null, error }; }
+        },
+        async update(id, jornada) {
+            try {
+                await fbDb.collection('jornadas').doc(id).update(jornada);
+                jornada.id = id;
+                return { data: [jornada], error: null };
+            } catch (error) { return { data: null, error }; }
+        },
+        async delete(id) {
+            try {
+                await fbDb.collection('jornadas').doc(id).delete();
+                return { error: null };
+            } catch (error) { return { error }; }
+        }
     }
 };

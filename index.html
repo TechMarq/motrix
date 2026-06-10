@@ -41,11 +41,21 @@
                         <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">SENHA</label>
                         <a href="#" id="link-forgot-pw" onclick="forgotPassword(event)" style="font-size: 11px; color: var(--accent-orange); text-decoration: none; font-weight: 600;">Esqueceu a senha?</a>
                     </div>
-                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box;">
+                    <div style="position: relative;">
+                        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box; padding-right: 48px;">
+                        <button type="button" onclick="toggleLoginPassword()" id="toggle-pw-btn" aria-label="Mostrar / ocultar senha" title="Mostrar / ocultar senha" style="position: absolute; top: 50%; right: 12px; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.2s; -webkit-tap-highlight-color: transparent;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">
+                            <i data-lucide="eye" id="toggle-pw-icon" style="width: 18px; height: 18px; pointer-events: none;"></i>
+                        </button>
+                    </div>
                     
                     <div id="group-confirm-pw" style="display: none; margin-top: 24px;">
                         <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">CONFIRMAR SENHA</label>
-                        <input type="password" id="login-password-confirm" class="form-control" placeholder="••••••••" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box; margin-top: 4px;">
+                        <div style="position: relative; margin-top: 4px;">
+                            <input type="password" id="login-password-confirm" class="form-control" placeholder="••••••••" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; width: 100%; box-sizing: border-box; padding-right: 48px;">
+                            <button type="button" onclick="toggleConfirmPassword()" aria-label="Mostrar / ocultar confirmação" title="Mostrar / ocultar confirmação" style="position: absolute; top: 50%; right: 12px; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.2s; -webkit-tap-highlight-color: transparent;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">
+                                <i data-lucide="eye" id="toggle-confirm-icon" style="width: 18px; height: 18px; pointer-events: none;"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <p id="login-errorMsg" class="text-caption" style="color: var(--danger); font-size: 12px; margin-top: 12px; display: none;">Credenciais inválidas.</p>
@@ -56,6 +66,37 @@
                 <span id="text-toggle-auth">Não tem uma conta?</span>
                 <a href="#" id="link-toggle-auth" onclick="toggleAuthMode(event)" style="color: var(--accent-orange); font-weight: 700; text-decoration: none; margin-left: 5px;">Criar Conta Grátis</a>
             </p>
+        </div>
+
+        <!-- TELA: VERIFICAÇÃO DE E-MAIL PENDENTE -->
+        <div id="verify-screen" style="display: none; width: 100%; max-width: 380px; z-index: 1;">
+            <div class="glass-card" style="text-align: center; padding: 36px 24px; border: 1px solid rgba(255,140,0,0.2);">
+                <div style="width: 72px; height: 72px; background: rgba(255,140,0,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <i data-lucide="mail" style="width: 36px; height: 36px; color: var(--accent-orange);"></i>
+                </div>
+                <h2 style="color: white; font-size: 20px; font-weight: 800; margin-bottom: 10px;">Confirme seu E-mail</h2>
+                <p class="text-caption" style="font-size: 14px; line-height: 1.6; margin-bottom: 8px;">
+                    Enviamos um link de confirmação para:
+                </p>
+                <p id="verify-email-display" style="color: var(--accent-orange); font-weight: 700; font-size: 14px; margin-bottom: 20px; word-break: break-all;"></p>
+                <p class="text-caption" style="font-size: 12px; margin-bottom: 24px; opacity: 0.7;">
+                    Clique no link do e-mail para ativar sua conta. Verifique também a pasta de spam.
+                </p>
+
+                <button onclick="checkEmailVerified()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent-orange), #ff6b00); border: none; border-radius: 12px; color: white; font-size: 15px; font-weight: 800; cursor: pointer; margin-bottom: 12px; letter-spacing: 0.03rem;">
+                    ✅ Já confirmei, entrar
+                </button>
+
+                <button onclick="resendVerificationEmail()" id="btn-resend" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #aaa; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 20px;">
+                    Reenviar e-mail de verificação
+                </button>
+
+                <p id="verify-msg" style="font-size: 12px; min-height: 18px; color: #00d2ff;"></p>
+
+                <a href="#" onclick="backToLogin(event)" style="display: block; margin-top: 16px; font-size: 12px; color: #666; text-decoration: none;">
+                    ← Voltar ao login
+                </a>
+            </div>
         </div>
     </div>
 
@@ -109,6 +150,24 @@
                         <span class="text-caption" style="font-size: 9px;">KM rest.</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- ACTIVE SHIFT STATS BAR ON DASHBOARD -->
+            <div id="dash-jornada-banner" class="glass-card card-compact" style="background: rgba(0, 255, 136, 0.05); border: 1px solid rgba(0, 255, 136, 0.15); margin-bottom: 8px; display: none; align-items: center; justify-content: space-between; padding: 10px 14px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="badge-alert" style="background: #00ff88; color: black; border: none; font-size: 8px; font-weight: 800; padding: 2px 6px;">ATIVA 🚗</span>
+                    <span class="text-caption" style="font-size: 11px;">Jornada iniciada às <strong id="dash-jornada-start-time" style="color: white;">--:--</strong></span>
+                </div>
+                <button onclick="promptEndJornada()" style="background: #ff4d4d; border: none; color: white; padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer;">Finalizar</button>
+            </div>
+
+            <!-- INACTIVE SHIFT STATS BAR ON DASHBOARD -->
+            <div id="dash-jornada-inactive-banner" class="glass-card card-compact" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-card); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="badge-alert" style="background: #555; color: white; border: none; font-size: 8px; font-weight: 800; padding: 2px 6px;">INATIVA 😴</span>
+                    <span class="text-caption" style="font-size: 11px;">Nenhuma jornada ativa</span>
+                </div>
+                <button onclick="promptStartJornada()" style="background: #00ff88; border: none; color: black; padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer;">Iniciar</button>
             </div>
 
             <!-- MAINTENANCE ALERTS CONTAINER -->
@@ -539,6 +598,11 @@
                         <input type="date" id="bill-date" class="form-control" required>
                     </div>
 
+                    <!-- Active Shift Indicator -->
+                    <div id="billing-jornada-tag" style="display: none; margin-bottom: 12px; padding: 8px 12px; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); border-radius: 10px; font-size: 11px; color: #00ff88; font-weight: 600;">
+                        🚗 Ganho será vinculado à jornada ativa
+                    </div>
+
                     <div class="form-group">
                         <label>Plataforma</label>
                         <div id="bill-platform-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
@@ -652,6 +716,11 @@
                         <input type="date" id="cost-date" class="form-control" required>
                     </div>
 
+                    <!-- Active Shift Indicator -->
+                    <div id="cost-jornada-tag" style="display: none; margin-bottom: 12px; padding: 8px 12px; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); border-radius: 10px; font-size: 11px; color: #00ff88; font-weight: 600;">
+                        🚗 Vinculado à jornada ativa
+                    </div>
+
                     <div class="form-group">
                         <label>Tipo de Custo</label>
                         <div id="cost-type-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
@@ -662,9 +731,24 @@
                             <button type="button" class="btn-chip" data-type="Limpeza">✨ Limpeza</button>
                             <button type="button" class="btn-chip" data-type="Seguro">🛡️ Seguro</button>
                             <button type="button" class="btn-chip" data-type="IPVA">📋 IPVA</button>
+                            <button type="button" class="btn-chip" data-type="Taxa Uber">🚗 Taxa Uber</button>
+                            <button type="button" class="btn-chip" data-type="Taxa 99">🟡 Taxa 99</button>
+                            <button type="button" class="btn-chip" data-type="Taxa InDrive">🟢 Taxa InDrive</button>
                             <button type="button" class="btn-chip" data-type="Outro">⚙️ Outro</button>
                         </div>
                         <input type="hidden" id="cost-type-value" value="Combustível">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plataforma / Origem (opcional)</label>
+                        <div id="cost-platform-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                            <button type="button" class="btn-chip-sm" data-plat="">Nenhuma</button>
+                            <button type="button" class="btn-chip-sm" data-plat="Uber">Uber</button>
+                            <button type="button" class="btn-chip-sm" data-plat="99">99</button>
+                            <button type="button" class="btn-chip-sm" data-plat="InDrive">InDrive</button>
+                            <button type="button" class="btn-chip-sm" data-plat="Particular">Particular</button>
+                        </div>
+                        <input type="hidden" id="cost-platform-value" value="">
                     </div>
 
                     <div class="form-group">
@@ -682,7 +766,7 @@
 
                     <div class="form-group">
                         <label>Observação (opcional)</label>
-                        <textarea id="cost-obs" class="form-control" rows="3" placeholder="Adicione uma nota..."></textarea>
+                        <textarea id="cost-obs" class="form-control" rows="2" placeholder="Adicione uma nota..."></textarea>
                     </div>
 
                     <div style="display: flex; gap: 12px; margin-top: 20px;">
@@ -764,51 +848,68 @@
             </div>
         </section>
         
-        <!-- FLEET VIEW -->
-        <section id="view-fleet" class="view-section">
+        <!-- JORNADAS VIEW -->
+        <section id="view-jornadas" class="view-section">
             <div class="header-row" style="margin-bottom: 24px; padding: 20px; background: rgba(255,140,0,0.05); border-radius: 12px; border: 1px solid rgba(255,140,0,0.1);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button class="btn-icon" onclick="switchView('dashboard')" style="background: rgba(255,255,255,0.05); color: #888;">
-                        <i data-lucide="home"></i>
+                <div style="display: flex; align-items: center; gap: 12px; justify-content: space-between; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn-icon" onclick="switchView('dashboard')" style="background: rgba(255,255,255,0.05); color: #888;">
+                            <i data-lucide="home"></i>
+                        </button>
+                        <h2 class="title-large" style="margin: 0; font-size: 20px;">Jornadas de Trabalho</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Shift Card (Visible if active) -->
+            <div id="jornada-active-card" class="glass-card" style="border-left: 4px solid #00ff88; margin-bottom: 20px; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span class="badge-alert" style="background: #00ff88; color: black; border: none; font-weight: 800; padding: 4px 10px; font-size: 11px;">JORNADA ATIVA 🚗</span>
+                        <div style="margin-top: 10px;">
+                            <span class="text-caption" style="display: block;">Início: <strong id="active-jornada-start-time" style="color: white;">--:--</strong></span>
+                            <span class="text-caption" style="display: block;">KM de Início: <strong id="active-jornada-start-km" style="color: white;">0 KM</strong></span>
+                            <span class="text-caption" style="display: block;">Duração: <strong id="active-jornada-duration" style="color: white;">0h 0m</strong></span>
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="promptEndJornada()" style="margin: 0; background: #ff4d4d; color: white; width: auto; padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 10px;">
+                        Finalizar Jornada
                     </button>
-                    <h2 class="title-large" style="margin: 0; font-size: 20px;">Visão Geral da Frota</h2>
                 </div>
             </div>
 
-            <div class="stats-grid">
-                <div class="glass-card stat-item" style="border-left: 3px solid var(--accent-orange); padding: 15px;">
-                    <label style="font-size: 10px;">Gasto Total Combustível</label>
-                    <div class="value" id="fleet-fuel-total" style="font-size: 20px;">R$ 0,00</div>
-                    <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
-                </div>
-                <div class="glass-card stat-item" style="border-left: 3px solid var(--warning); padding: 15px;">
-                    <label style="font-size: 10px;">Gasto Total Manutenção</label>
-                    <div class="value" id="fleet-maint-total" style="font-size: 20px;">R$ 0,00</div>
-                    <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
-                </div>
+            <!-- Start Shift Card (Visible if inactive) -->
+            <div id="jornada-inactive-card" class="glass-card" style="border-left: 4px solid #888; margin-bottom: 20px; text-align: center; padding: 30px 20px;">
+                <i data-lucide="clock" style="width: 48px; height: 48px; color: #aaa; margin-bottom: 12px; margin: 0 auto 12px;"></i>
+                <h3 style="color: white; font-size: 18px; font-weight: 700; margin-bottom: 8px;">Nenhuma Jornada Ativa</h3>
+                <p class="text-caption" style="margin-bottom: 20px;">Inicie uma jornada para monitorar suas despesas, ganhos e tempo de trabalho da Uber, 99 ou particular.</p>
+                <button class="btn-primary" onclick="promptStartJornada()" style="margin: 0 auto; background: #00ff88; color: black; font-weight: 800; max-width: 200px;">
+                    Iniciar Jornada
+                </button>
             </div>
 
-            <div class="glass-card">
-                <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                    <i data-lucide="alert-triangle" style="width: 14px; color: var(--warning);"></i> 
-                    Próximas Manutenções (Toda Frota)
-                </h3>
-                <div id="fleet-alerts-list">
-                    <!-- Alerts for all vehicles loaded here -->
-                </div>
-            </div>
-            
-            <div class="glass-card">
-                <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px;">Comparativo por Veículo</h3>
-                <div id="fleet-vehicle-summary">
-                    <!-- Cards per vehicle with their specific totals -->
-                </div>
+            <!-- List of Shifts History -->
+            <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Histórico de Jornadas</h3>
+            <div id="jornadas-history-list" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Cards per shift injected via JS -->
             </div>
         </section>
 
         <!-- QUICK ACTIONS MENU (Appears above FAB) -->
         <div id="quick-actions-overlay" class="quick-actions-overlay" onclick="toggleQuickActions()"></div>
         <div id="quick-actions-menu" class="quick-actions-menu">
+            <button class="quick-action-item" id="qa-jornada-btn" onclick="handleJornadaQuickActionClick(); toggleQuickActions();">
+                <div class="icon-circle" id="qa-jornada-icon-div" style="background: #00ff88; color: black;"><i data-lucide="play" id="qa-jornada-icon"></i></div>
+                <span id="qa-jornada-text">Iniciar Jornada</span>
+            </button>
+            <button class="quick-action-item" onclick="switchView('billing-form'); toggleQuickActions();">
+                <div class="icon-circle" style="background: rgba(0,242,255,0.15); color: #00f2ff;"><i data-lucide="banknote"></i></div>
+                <span>Lançar Ganhos</span>
+            </button>
+            <button class="quick-action-item" onclick="switchView('costs-form'); toggleQuickActions();">
+                <div class="icon-circle" style="background: rgba(255,118,117,0.15); color: #ff7675;"><i data-lucide="credit-card"></i></div>
+                <span>Lançar Custo</span>
+            </button>
             <button class="quick-action-item" onclick="switchView('fuel'); toggleQuickActions();">
                 <div class="icon-circle fuel"><i data-lucide="fuel"></i></div>
                 <span>Abastecer</span>
@@ -825,9 +926,9 @@
                 <i data-lucide="home"></i>
                 <span>Início</span>
             </div>
-            <div class="nav-item" onclick="switchView('fleet')">
-                <i data-lucide="car"></i>
-                <span>Frota</span>
+            <div class="nav-item" onclick="switchView('jornadas')">
+                <i data-lucide="clock"></i>
+                <span>Jornadas</span>
             </div>
             
             <!-- CENTRAL FAB -->
@@ -851,5 +952,198 @@
     <!-- FIREBASE CLIENT & CONFIG -->
     <script src="firebase.js"></script>
     <script src="app.js"></script>
+
+    <script>
+        // =============================================
+        // TOGGLE MOSTRAR / OCULTAR SENHA
+        // =============================================
+        function toggleLoginPassword() {
+            const input = document.getElementById('login-password');
+            const icon  = document.getElementById('toggle-pw-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        function toggleConfirmPassword() {
+            const input = document.getElementById('login-password-confirm');
+            const icon  = document.getElementById('toggle-confirm-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        // =============================================
+        // MODO: LOGIN ou CADASTRO
+        // =============================================
+        let _isSignupMode = false;
+
+        function toggleAuthMode(e) {
+            e.preventDefault();
+            _isSignupMode = !_isSignupMode;
+
+            const title      = document.getElementById('auth-title');
+            const btnSubmit  = document.getElementById('btn-auth-submit');
+            const textToggle = document.getElementById('text-toggle-auth');
+            const linkToggle = document.getElementById('link-toggle-auth');
+            const confirmGrp = document.getElementById('group-confirm-pw');
+            const forgotLink = document.getElementById('link-forgot-pw');
+            const errorMsg   = document.getElementById('login-errorMsg');
+
+            errorMsg.style.display = 'none';
+
+            if (_isSignupMode) {
+                title.textContent        = 'Criar Conta';
+                btnSubmit.textContent    = 'CRIAR CONTA';
+                textToggle.textContent   = 'Já tem uma conta?';
+                linkToggle.textContent   = 'Fazer Login';
+                confirmGrp.style.display = 'block';
+                forgotLink.style.display = 'none';
+            } else {
+                title.textContent        = 'Acessar Conta';
+                btnSubmit.textContent    = 'ENTRAR SEGURO';
+                textToggle.textContent   = 'Não tem uma conta?';
+                linkToggle.textContent   = 'Criar Conta Grátis';
+                confirmGrp.style.display = 'none';
+                forgotLink.style.display = '';
+                document.getElementById('login-password-confirm').type = 'password';
+                document.getElementById('toggle-confirm-icon').setAttribute('data-lucide', 'eye');
+            }
+            document.getElementById('login-password').type = 'password';
+            document.getElementById('toggle-pw-icon').setAttribute('data-lucide', 'eye');
+            lucide.createIcons();
+        }
+
+        // =============================================
+        // ESQUECEU A SENHA
+        // =============================================
+        async function forgotPassword(e) {
+            e.preventDefault();
+            const email    = document.getElementById('login-email').value.trim();
+            const errorMsg = document.getElementById('login-errorMsg');
+
+            if (!email) {
+                errorMsg.style.color   = '#ff7675';
+                errorMsg.textContent   = 'Digite seu e-mail acima antes de redefinir a senha.';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                await firebase.auth().sendPasswordResetEmail(email);
+                errorMsg.style.color   = '#00d2ff';
+                errorMsg.textContent   = '✅ E-mail de redefinição enviado! Verifique sua caixa de entrada.';
+                errorMsg.style.display = 'block';
+            } catch (err) {
+                let msg = 'Erro ao enviar e-mail.';
+                if (err.code === 'auth/user-not-found')    msg = 'Nenhuma conta com este e-mail.';
+                if (err.code === 'auth/invalid-email')     msg = 'E-mail inválido.';
+                if (err.code === 'auth/too-many-requests') msg = 'Muitas tentativas. Aguarde e tente novamente.';
+                errorMsg.style.color   = '#ff7675';
+                errorMsg.textContent   = msg;
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        // =============================================
+        // LOGIN / CADASTRO COM VERIFICAÇÃO DE EMAIL
+        // =============================================
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email     = document.getElementById('login-email').value.trim();
+            const password  = document.getElementById('login-password').value;
+            const errorMsg  = document.getElementById('login-errorMsg');
+            const btnSubmit = document.getElementById('btn-auth-submit');
+
+            errorMsg.style.display = 'none';
+            btnSubmit.disabled     = true;
+            const originalText     = btnSubmit.textContent;
+            btnSubmit.textContent  = 'Aguarde...';
+
+            try {
+                if (_isSignupMode) {
+                    // ---- CADASTRO ----
+                    const confirm = document.getElementById('login-password-confirm').value;
+                    if (password !== confirm) {
+                        errorMsg.style.color   = '#ff7675';
+                        errorMsg.textContent   = 'As senhas não coincidem.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    if (password.length < 6) {
+                        errorMsg.style.color   = '#ff7675';
+                        errorMsg.textContent   = 'A senha deve ter pelo menos 6 caracteres.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+
+                    const userCred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                    await userCred.user.sendEmailVerification();
+                    await firebase.auth().signOut();
+
+                    errorMsg.style.color   = '#00d2ff';
+                    errorMsg.style.display = 'block';
+                    errorMsg.innerHTML     = '📧 Conta criada! Verifique seu e-mail para ativar o acesso.<br><small style="opacity:0.8;">Após confirmar, faça login normalmente.</small>';
+
+                    // Volta para tela de login
+                    _isSignupMode = true;
+                    toggleAuthMode({ preventDefault: () => {} });
+
+                } else {
+                    // ---- LOGIN ----
+                    const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
+
+                    if (!userCred.user.emailVerified) {
+                        await firebase.auth().signOut();
+                        errorMsg.style.color   = '#ff7675';
+                        errorMsg.style.display = 'block';
+                        errorMsg.innerHTML     = '📧 E-mail não verificado. Confirme antes de entrar.<br><small style="opacity:0.8;"><a href="#" onclick="resendVerification(\'' + email.replace(/'/g, "\\'") + '\',\'' + password.replace(/'/g, "\\'") + '\',event)" style="color:#ff8c00;">Reenviar e-mail de verificação</a></small>';
+                        return;
+                    }
+                    // Login bem-sucedido — app.js cuida do onAuthStateChanged
+                }
+            } catch (err) {
+                let msg = 'Erro desconhecido. Tente novamente.';
+                if (err.code === 'auth/user-not-found')       msg = 'Nenhuma conta com este e-mail.';
+                if (err.code === 'auth/wrong-password')       msg = 'Senha incorreta.';
+                if (err.code === 'auth/invalid-email')        msg = 'E-mail inválido.';
+                if (err.code === 'auth/email-already-in-use') msg = 'Este e-mail já está cadastrado.';
+                if (err.code === 'auth/weak-password')        msg = 'Senha fraca. Use ao menos 6 caracteres.';
+                if (err.code === 'auth/too-many-requests')    msg = 'Conta bloqueada temporariamente. Tente mais tarde.';
+                if (err.code === 'auth/invalid-credential')   msg = 'E-mail ou senha incorretos.';
+                errorMsg.style.color   = '#ff7675';
+                errorMsg.textContent   = msg;
+                errorMsg.style.display = 'block';
+            } finally {
+                btnSubmit.disabled    = false;
+                btnSubmit.textContent = originalText;
+            }
+        }
+
+        // Reenviar verificação
+        async function resendVerification(email, password, e) {
+            e.preventDefault();
+            const errorMsg = document.getElementById('login-errorMsg');
+            try {
+                const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
+                await userCred.user.sendEmailVerification();
+                await firebase.auth().signOut();
+                errorMsg.style.color = '#00d2ff';
+                errorMsg.textContent = '✅ E-mail de verificação reenviado!';
+            } catch(err) {
+                errorMsg.textContent = 'Erro ao reenviar. Tente novamente.';
+            }
+        }
+    </script>
 </body>
 </html>

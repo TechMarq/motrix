@@ -269,11 +269,15 @@ body {
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    max-width: 360px;
     opacity: 0;
     visibility: hidden;
     transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 1000;
+    padding: 0 12px;
 }
 
 .quick-actions-overlay.active + .bottom-nav + .quick-actions-menu,
@@ -496,6 +500,26 @@ body {
     background: #00f2ff;
     border-color: #00f2ff;
     color: #0a0a0a;
+}
+
+/* Small platform chips */
+.btn-chip-sm {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    letter-spacing: 0.02em;
+}
+
+.btn-chip-sm.active {
+    background: rgba(255, 140, 0, 0.15);
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
 }
 
 

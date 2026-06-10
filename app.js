@@ -15,17 +15,28 @@ let state = {
     currentView: 'dashboard',
     historyTab: 'fuel',
     editingFuelId: null,
-    editingMaintId: null
+    editingMaintId: null,
+    jornadas: [],
+    activeJornada: null
 };
 
 let charts = {}; // Store Chart.js instances
 
 // INITIALIZE
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Tenta recuperar sessão ativa no Supabase
+    // 1. Tenta recuperar sessão ativa no Firebase
     const user = await window.db.auth.getUser();
     
     if (!user) {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        lucide.createIcons();
+        return;
+    }
+
+    // 2. Block access if email not verified
+    if (!user.emailVerified) {
+        await firebase.auth().signOut();
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('app').style.display = 'none';
         lucide.createIcons();
@@ -36,104 +47,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeApp();
 });
 
-let isLoginMode = true;
-
-function toggleAuthMode(e) {
-    e.preventDefault();
-    isLoginMode = !isLoginMode;
-    
-    document.getElementById('auth-title').innerText = isLoginMode ? 'Acessar Conta' : 'Criar Conta Grátis';
-    document.getElementById('btn-auth-submit').innerText = isLoginMode ? 'Entrar Seguro' : 'Cadastrar';
-    document.getElementById('text-toggle-auth').innerText = isLoginMode ? 'Não tem uma conta?' : 'Já possui conta?';
-    document.getElementById('link-toggle-auth').innerText = isLoginMode ? 'Criar Conta Grátis' : 'Fazer Login';
-    
-    document.getElementById('group-confirm-pw').style.display = isLoginMode ? 'none' : 'block';
-    
-    // Esconder "Esqueceu senha?" no modo de cadastro
-    document.getElementById('link-forgot-pw').style.display = isLoginMode ? 'inline' : 'none';
-    document.getElementById('login-password-confirm').required = !isLoginMode;
-    
-    document.getElementById('login-errorMsg').style.display = 'none';
-}
-
-async function handleAuth(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const pw = document.getElementById('login-password').value;
-    const pwConfirm = document.getElementById('login-password-confirm').value;
-    const err = document.getElementById('login-errorMsg');
-    const submitBtn = document.getElementById('btn-auth-submit');
-    
-    if (!isLoginMode && pw !== pwConfirm) {
-        err.innerText = "As senhas não coincidem.";
-        err.style.display = 'block';
-        return;
-    }
-
-    // Mostra carregamento
-    const btnText = submitBtn.innerText;
-    submitBtn.innerText = "Aguarde...";
-    submitBtn.disabled = true;
-    err.style.display = 'none';
-
-    let response;
-    
-    try {
-        if (isLoginMode) {
-            response = await window.db.auth.login(email, pw);
-        } else {
-            response = await window.db.auth.signup(email, pw);
-        }
-        
-        const { data, error } = response;
-        
-        if (error) {
-            if (error.message.includes('Invalid login')) {
-                err.innerText = "Usuário ou senha incorretos.";
-            } else if (error.message.includes('already registered')) {
-                err.innerText = "Este e-mail já está cadastrado. Faça login.";
-            } else {
-                err.innerText = error.message;
-            }
-            err.style.display = 'block';
-            submitBtn.innerText = btnText;
-            submitBtn.disabled = false;
-            return;
-        }
-
-        if (!isLoginMode && data.user && data.session === null) {
-            // Supabase require email confirmation if enabled
-            alert('Sua conta grátis foi criada! Por favor, verifique a caixa de entrada do seu e-mail para confirmar a conta.');
-            toggleAuthMode(new CustomEvent('click')); // switch back to login
-        } else if (data && data.user) {
-            currentUser = data.user;
-            // The trigger in the DB automatically creates a free line in 'profiles'
-            state.isPremium = false; // By default locally 
-            initializeApp();
-        }
-    } catch (catchErr) {
-        alert("Erro no servidor: " + catchErr.message);
-        console.error(catchErr);
-    }
-    
-    submitBtn.innerText = btnText;
-    submitBtn.disabled = false;
-}
-
-async function forgotPassword(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    if (!email) {
-        alert('Por favor, digite seu e-mail no campo acima para recuperar a senha.');
-    } else {
-        const { error } = await window.db.auth.resetPassword(email);
-        if (error) {
-            alert("Erro ao enviar email: " + error.message);
-        } else {
-            alert(`Se esse email estiver cadastrado, um link de recuperação real do Supabase foi enviado para:\n${email}`);
-        }
-    }
-}
+// Auth functions (toggleAuthMode, handleAuth, forgotPassword) are defined in
+// the inline <script> in index.html where they also handle Firebase email verification.
 
 async function initializeApp() {
     document.getElementById('login-screen').style.display = 'none';
@@ -209,6 +124,13 @@ async function initializeApp() {
             vehicleId: d.vehicle_id,
             data: d.file_url 
         }));
+    }
+
+    const { data: cloudJornadas } = await window.db.jornadas.getAll();
+    if (cloudJornadas) {
+        state.jornadas = cloudJornadas;
+        state.activeJornada = state.jornadas.find(j => j.status === 'active') || null;
+        updateJornadasUI();
     }
 
     lucide.createIcons();
@@ -301,7 +223,7 @@ function refreshUI() {
     if (state.currentView === 'analytics') renderAnalytics();
     if (state.currentView === 'wallet') renderWallet();
     if (state.currentView === 'history') renderFullHistory();
-    if (state.currentView === 'fleet') renderFleetOverview();
+    if (state.currentView === 'jornadas') updateJornadasUI();
 }
 
 // VIEW MANAGEMENT
@@ -323,7 +245,7 @@ function switchView(viewId) {
         const text = item.querySelector('span')?.innerText.toLowerCase();
         const mapping = {
             'dashboard': 'início',
-            // 'wallet': 'carteira',
+            'jornadas': 'jornadas',
             'billing': 'ganhos',
             'fleet': 'frota',
             'costs': 'custos',
@@ -344,15 +266,26 @@ function switchView(viewId) {
     if (viewId === 'costs') renderCosts();
     if (viewId === 'billing') renderBilling();
     if (viewId === 'analytics') renderAnalytics();
-    if (viewId === 'fleet') renderFleetOverview();
+    if (viewId === 'jornadas') updateJornadasUI();
     
     if (viewId === 'costs-form') {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('cost-date').value = today;
+        // Show jornada tag if a shift is active
+        const jornadaTag = document.getElementById('cost-jornada-tag');
+        if (jornadaTag) jornadaTag.style.display = state.activeJornada ? 'block' : 'none';
+        // Reset platform chip selection
+        document.querySelectorAll('#cost-platform-selector .btn-chip-sm').forEach(c => c.classList.remove('active'));
+        const noneChip = document.querySelector('#cost-platform-selector .btn-chip-sm[data-plat=""]');
+        if (noneChip) noneChip.classList.add('active');
+        document.getElementById('cost-platform-value').value = '';
     }
     if (viewId === 'billing-form') {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('bill-date').value = today;
+        // Show jornada tag if a shift is active
+        const billTag = document.getElementById('billing-jornada-tag');
+        if (billTag) billTag.style.display = state.activeJornada ? 'block' : 'none';
     }
 
     state.currentView = viewId;
@@ -487,6 +420,9 @@ document.getElementById('form-fuel').addEventListener('submit', async (e) => {
             total: total,
             consumption: 0 // Will be calculated by recalculateConsumptions()
         };
+        if (state.activeJornada) {
+            newLog.jornada_id = state.activeJornada.id;
+        }
 
         const { data, error } = await window.db.fuel.add(newLog);
         if (error) {
@@ -670,6 +606,9 @@ document.getElementById('form-maintenance').addEventListener('submit', async (e)
         // CREATE NEW
         logData.vehicle_id = state.activeVehicleId;
         logData.status = 'pendente';
+        if (state.activeJornada) {
+            logData.jornada_id = state.activeJornada.id;
+        }
         const { data, error } = await window.db.maintenance.add(logData);
         
         if (error) {
@@ -855,6 +794,9 @@ document.getElementById('form-billing').addEventListener('submit', async (e) => 
         amount,
         km
     };
+    if (state.activeJornada) {
+        newBill.jornada_id = state.activeJornada.id;
+    }
 
     const { data, error } = await window.db.billing.add(newBill);
     if (error) {
@@ -1332,184 +1274,235 @@ function renderFuelHistory() {
     lucide.createIcons();
 }
 
-function renderFleetOverview() {
-    const fleetView = document.getElementById('view-fleet');
+// ============================================================
+// WORK SHIFTS LOGIC (JORNADAS DE TRABALHO)
+// ============================================================
 
-    if (!fleetView) return;
-
-    // VIP Gating for the entire tab
-    if (!state.isPremium) {
-        fleetView.innerHTML = `
-            <div style="height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ffd700, #ff8c00); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 10px 20px rgba(255,140,0,0.3);">
-                    <i data-lucide="shield-check" style="width: 40px; height: 40px; color: black;"></i>
-                </div>
-                <h2 class="title-large" style="font-size: 24px; margin-bottom: 12px;">Gestão de Frota VIP</h2>
-                <p class="text-caption" style="font-size: 15px; margin-bottom: 30px; line-height: 1.6; max-width: 300px;">
-                    Acompanhe indicadores globais de todos os seus veículos e receba alertas de manutenção centralizados. 
-                    <strong>Funcionalidade exclusiva para membros VIP Motrix.</strong>
-                </p>
-                <button onclick="becomePremium()" class="action-btn" style="width: 100%; max-width: 250px; background: linear-gradient(135deg, #ffd700, #ff8c00); padding: 16px; border-radius: 12px; font-weight: 800; border: none; cursor: pointer;">
-                    ASSINAR MOTRIX VIP
-                </button>
-                <button onclick="switchView('dashboard')" style="background: transparent; border: none; color: #888; margin-top: 20px; font-weight: 600; cursor: pointer;">
-                    Voltar para o Início
-                </button>
-            </div>
-        `;
-        lucide.createIcons();
+async function promptStartJornada() {
+    const activeVehicle = state.vehicles.find(v => v.id === state.activeVehicleId);
+    if (!activeVehicle) {
+        alert("Por favor, adicione um veículo antes de iniciar a jornada.");
         return;
     }
 
-    // Original implementation for VIP users...
-    // (Restoring the earlier HTML structure since we replaced everything above)
-    fleetView.innerHTML = `
-        <div class="header-row" style="margin-bottom: 24px; padding: 20px; background: rgba(255,140,0,0.05); border-radius: 12px; border: 1px solid rgba(255,140,0,0.1);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <button class="btn-icon" onclick="switchView('dashboard')" style="background: rgba(255,255,255,0.05); color: #888;">
-                    <i data-lucide="home"></i>
-                </button>
-                <h2 class="title-large" style="margin: 0; font-size: 20px;">Visão Geral da Frota</h2>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="glass-card stat-item" style="border-left: 3px solid var(--accent-orange); padding: 15px;">
-                <label style="font-size: 10px;">Gasto Total Combustível</label>
-                <div class="value" id="fleet-fuel-total" style="font-size: 20px;">R$ 0,00</div>
-                <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
-            </div>
-            <div class="glass-card stat-item" style="border-left: 3px solid var(--warning); padding: 15px;">
-                <label style="font-size: 10px;">Gasto Total Manutenção</label>
-                <div class="value" id="fleet-maint-total" style="font-size: 20px;">R$ 0,00</div>
-                <span class="text-caption" style="font-size: 10px;">Todos os veículos (Mês)</span>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                <i data-lucide="alert-triangle" style="width: 14px; color: var(--warning);"></i> 
-                Próximas Manutenções (Toda Frota)
-            </h3>
-            <div id="fleet-alerts-list"></div>
-        </div>
-        
-        <div class="glass-card">
-            <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px;">Comparativo por Veículo</h3>
-            <div id="fleet-vehicle-summary"></div>
-        </div>
-    `;
-
-    const fuelTotalEl = document.getElementById('fleet-fuel-total');
-    const maintTotalEl = document.getElementById('fleet-maint-total');
-    const alertsList = document.getElementById('fleet-alerts-list');
-    const summaryList = document.getElementById('fleet-vehicle-summary');
-
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    let grandFuel = 0;
-    let grandMaint = 0;
-    let crossFleetAlerts = [];
-
-    // summaryList.innerHTML = ''; // These are now part of the fleetView.innerHTML reset
-    // alertsList.innerHTML = ''; // These are now part of the fleetView.innerHTML reset
-
-    state.vehicles.forEach(veh => {
-        const vehFuel = state.fuelLogs.filter(l => {
-            if (l.vehicleId !== veh.id) return false;
-            const d = new Date(l.date);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        }).reduce((acc, l) => acc + (l.total || 0), 0);
-
-        const vehMaint = state.maintenanceLogs.filter(l => {
-            if (l.vehicleId !== veh.id) return false;
-            const d = new Date(l.date);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        }).reduce((acc, l) => acc + (l.cost || 0), 0);
-
-        grandFuel += vehFuel;
-        grandMaint += vehMaint;
-
-        const upcoming = state.maintenanceLogs.filter(m => {
-            if (m.vehicleId !== veh.id || m.intervalType === 'none') return false;
-            if (m.intervalType === 'km') {
-                const kmRemaining = m.next - (veh.km_actual || 0);
-                return kmRemaining < 1000;
-            } else if (m.intervalType === 'date' && m.nextDate) {
-                const nd = new Date(m.nextDate);
-                const daysDiff = (nd - now) / (1000 * 60 * 60 * 24);
-                return daysDiff < 15;
-            }
-            return false;
-        });
-
-        upcoming.forEach(u => {
-            crossFleetAlerts.push({ ...u, vehName: veh.model });
-        });
-
-        const summaryCard = document.createElement('div');
-        summaryCard.className = 'glass-card';
-        summaryCard.style.padding = '12px';
-        summaryCard.style.marginBottom = '10px';
-        summaryCard.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="display: block;">${veh.model}</strong>
-                    <span class="text-caption">${veh.plate}</span>
-                </div>
-                <div style="text-align: right;">
-                    <div class="text-caption" style="font-size: 10px;">Gasto no Mês</div>
-                    <strong style="color: var(--accent-orange); font-size: 15px;">R$ ${(vehFuel + vehMaint).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                </div>
-            </div>
-        `;
-        summaryList.appendChild(summaryCard);
-    });
-
-    fuelTotalEl.innerText = `R$ ${grandFuel.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    maintTotalEl.innerText = `R$ ${grandMaint.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-
-    if (crossFleetAlerts.length === 0) {
-        alertsList.innerHTML = `<p class="text-caption" style="text-align: center; padding: 20px;">🎉 Nenhuma manutenção pendente na frota.</p>`;
-    } else {
-        crossFleetAlerts.sort((a,b) => {
-            if (a.intervalType === 'km' && b.intervalType !== 'km') return -1;
-            return 0;
-        }).slice(0, 10).forEach(m => {
-            const div = document.createElement('div');
-            div.className = 'glass-card';
-            div.style.borderLeft = '4px solid var(--warning)';
-            div.style.marginBottom = '8px';
-            div.style.padding = '10px';
-            
-            let statusLabel = '';
-            let isVencida = false;
-            if (m.intervalType === 'km') {
-                const veh = state.vehicles.find(v => v.id === m.vehicleId);
-                const kmLeft = m.next - (veh ? veh.km_actual : 0);
-                isVencida = kmLeft <= 0;
-                statusLabel = isVencida ? 'VENCIDA' : `Faltam ${kmLeft.toLocaleString('pt-BR')} km`;
-            } else {
-                const nd = new Date(m.nextDate);
-                isVencida = nd <= now;
-                statusLabel = isVencida ? 'DATA VENCIDA' : 'DATA PRÓXIMA';
-            }
-
-            div.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span class="text-caption" style="font-weight: 800; color: #fff; font-size: 9px; display: block; opacity: 0.6;">${m.vehName.toUpperCase()}</span>
-                        <strong style="font-size: 13px;">${m.type}</strong>
-                    </div>
-                    <span class="badge-alert" style="background: ${isVencida ? 'var(--danger)' : 'var(--warning)'}; font-size: 8px;">${statusLabel}</span>
-                </div>
-            `;
-            alertsList.appendChild(div);
-        });
+    if (!confirm("Deseja iniciar sua jornada de trabalho agora?")) {
+        return;
     }
 
+    const startKmStr = prompt("Confirme ou digite o KM atual do veículo para iniciar a jornada:", activeVehicle.km_actual || 0);
+    if (startKmStr === null) return;
+    const startKm = parseFloat(startKmStr) || 0;
+
+    const now = new Date();
+    const date_start = now.toISOString().split('T')[0];
+    const time_start = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+
+    const newJornada = {
+        vehicle_id: state.activeVehicleId,
+        date_start: date_start,
+        time_start: time_start,
+        km_start: startKm,
+        date_end: '',
+        time_end: '',
+        km_end: 0,
+        status: 'active'
+    };
+
+    const { data, error } = await window.db.jornadas.add(newJornada);
+    if (error) {
+        alert("Erro ao iniciar jornada: " + error.message);
+    } else if (data && data.length > 0) {
+        state.activeJornada = data[0];
+        state.jornadas.unshift(state.activeJornada);
+        saveState();
+        updateJornadasUI();
+        alert(`Jornada iniciada com sucesso às ${time_start}!`);
+    }
+}
+
+async function promptEndJornada() {
+    if (!state.activeJornada) return;
+
+    if (!confirm("Deseja finalizar sua jornada de trabalho agora?")) {
+        return;
+    }
+
+    const activeVehicle = state.vehicles.find(v => v.id === state.activeVehicleId);
+    const endKmStr = prompt("Confirme ou digite o KM atual do veículo para encerrar a jornada:", Math.max(state.activeJornada.km_start, activeVehicle ? activeVehicle.km_actual : 0));
+    if (endKmStr === null) return;
+    const endKm = parseFloat(endKmStr) || 0;
+
+    if (endKm < state.activeJornada.km_start) {
+        alert("O KM final não pode ser menor que o KM inicial (" + state.activeJornada.km_start + ").");
+        return;
+    }
+
+    const now = new Date();
+    const date_end = now.toISOString().split('T')[0];
+    const time_end = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+
+    const updatedData = {
+        date_end: date_end,
+        time_end: time_end,
+        km_end: endKm,
+        status: 'finished'
+    };
+
+    const { data, error } = await window.db.jornadas.update(state.activeJornada.id, updatedData);
+    if (error) {
+        alert("Erro ao finalizar jornada: " + error.message);
+    } else if (data && data.length > 0) {
+        const index = state.jornadas.findIndex(j => j.id === state.activeJornada.id);
+        if (index !== -1) {
+            state.jornadas[index] = { ...state.jornadas[index], ...updatedData };
+        }
+        state.activeJornada = null;
+        saveState();
+        updateJornadasUI();
+        alert(`Jornada finalizada com sucesso às ${time_end}!`);
+    }
+}
+
+function handleJornadaQuickActionClick() {
+    if (state.activeJornada) {
+        promptEndJornada();
+    } else {
+        promptStartJornada();
+    }
+}
+
+function updateJornadasUI() {
+    const active = state.activeJornada;
+    
+    // Dashboard banners
+    const activeBanner = document.getElementById('dash-jornada-banner');
+    const inactiveBanner = document.getElementById('dash-jornada-inactive-banner');
+    const startTimeEl = document.getElementById('dash-jornada-start-time');
+
+    if (active) {
+        if (activeBanner) activeBanner.style.display = 'flex';
+        if (inactiveBanner) inactiveBanner.style.display = 'none';
+        if (startTimeEl) startTimeEl.innerText = active.time_start;
+    } else {
+        if (activeBanner) activeBanner.style.display = 'none';
+        if (inactiveBanner) inactiveBanner.style.display = 'flex';
+    }
+
+    // Quick Actions Shift Option UI
+    const qaBtnText = document.getElementById('qa-jornada-text');
+    const qaIconDiv = document.getElementById('qa-jornada-icon-div');
+    const qaIcon = document.getElementById('qa-jornada-icon');
+
+    if (qaBtnText && qaIconDiv && qaIcon) {
+        if (active) {
+            qaBtnText.innerText = "Finalizar Jornada";
+            qaIconDiv.style.background = "#ff4d4d";
+            qaIcon.setAttribute('data-lucide', 'square');
+        } else {
+            qaBtnText.innerText = "Iniciar Jornada";
+            qaIconDiv.style.background = "#00ff88";
+            qaIcon.setAttribute('data-lucide', 'play');
+        }
+        lucide.createIcons();
+    }
+
+    // Shifts View Card Toggle
+    const activeCard = document.getElementById('jornada-active-card');
+    const inactiveCard = document.getElementById('jornada-inactive-card');
+    if (activeCard && inactiveCard) {
+        if (active) {
+            activeCard.style.display = 'block';
+            inactiveCard.style.display = 'none';
+            document.getElementById('active-jornada-start-time').innerText = active.time_start + " (" + active.date_start.split('-').reverse().slice(0, 2).join('/') + ")";
+            document.getElementById('active-jornada-start-km').innerText = active.km_start.toLocaleString('pt-BR') + " KM";
+            
+            // Calculate active duration
+            const startDateTime = new Date(active.date_start + 'T' + active.time_start + ':00');
+            const diffMs = new Date() - startDateTime;
+            const diffHrs = Math.floor(diffMs / 3600000);
+            const diffMins = Math.floor((diffMs % 3600000) / 60000);
+            document.getElementById('active-jornada-duration').innerText = diffHrs + "h " + diffMins + "m";
+        } else {
+            activeCard.style.display = 'none';
+            inactiveCard.style.display = 'block';
+        }
+    }
+
+    if (state.currentView === 'jornadas') {
+        renderJornadas();
+    }
+    updateDashboardUI();
+}
+
+function renderJornadas() {
+    const list = document.getElementById('jornadas-history-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    const finishedJornadas = state.jornadas.filter(j => j.status === 'finished');
+
+    if (finishedJornadas.length === 0) {
+        list.innerHTML = `<p class="text-caption" style="text-align: center; padding: 20px; opacity: 0.5;">Nenhuma jornada encerrada no histórico.</p>`;
+        return;
+    }
+
+    // List all finished journeys
+    finishedJornadas.forEach(j => {
+        const startDateTime = new Date(j.date_start + 'T' + j.time_start + ':00');
+        const endDateTime = new Date(j.date_end + 'T' + j.time_end + ':00');
+        const diffMs = endDateTime - startDateTime;
+        const diffHrs = Math.floor(diffMs / 3600000);
+        const diffMins = Math.floor((diffMs % 3600000) / 60000);
+
+        // Filter fuel, maintenance, costs and billing logs linked to this journey
+        const linkedBilling = state.billingLogs.filter(log => log.jornada_id === j.id);
+        const linkedFuel = state.fuelLogs.filter(log => log.jornada_id === j.id);
+        const linkedMaint = state.maintenanceLogs.filter(log => log.jornada_id === j.id);
+        const linkedCosts = state.costsLogs.filter(log => log.jornada_id === j.id);
+
+        const totalGanhos = linkedBilling.reduce((sum, log) => sum + (log.amount || 0), 0);
+        const totalCombustivel = linkedFuel.reduce((sum, log) => sum + (log.total || 0), 0);
+        const totalMaint = linkedMaint.reduce((sum, log) => sum + (log.cost || 0), 0);
+        const totalCosts = linkedCosts.reduce((sum, log) => sum + (log.amount || 0), 0);
+
+        const totalSpent = totalCombustivel + totalMaint + totalCosts;
+        const netProfit = totalGanhos - totalSpent;
+
+        const dateLabel = j.date_start.split('-').reverse().join('/');
+        const kmDriven = j.km_end - j.km_start;
+
+        const div = document.createElement('div');
+        div.className = 'glass-card';
+        div.style.marginBottom = '12px';
+        div.style.borderLeft = `4px solid ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'}`;
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <div>
+                    <strong style="font-size: 15px; color: white;">Jornada ${dateLabel}</strong>
+                    <span class="text-caption" style="display: block; font-size: 11px; margin-top: 2px;">
+                        <i data-lucide="clock" style="width: 10px; height: 10px; display: inline-block; vertical-align: middle;"></i> 
+                        ${j.time_start} às ${j.time_end} (${diffHrs}h ${diffMins}m)
+                    </span>
+                    <span class="text-caption" style="display: block; font-size: 11px;">
+                        🏁 ${kmDriven > 0 ? kmDriven + ' KM rodados' : 'KM não calculado'} (${j.km_start} KM a ${j.km_end} KM)
+                    </span>
+                </div>
+                <div style="text-align: right;">
+                    <span class="text-caption" style="font-size: 9px; text-transform: uppercase; display: block; opacity: 0.6;">LUCRO LÍQUIDO</span>
+                    <strong style="display: block; font-size: 16px; color: ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'};">
+                        R$ ${netProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </strong>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 12px; color: #aaa;">Ganhos: <strong style="color: #00f2ff;">R$ ${totalGanhos.toFixed(2)}</strong></div>
+                <div style="font-size: 12px; color: #aaa; text-align: right;">Gastos: <strong style="color: #ff7675;">R$ ${totalSpent.toFixed(2)}</strong></div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
     lucide.createIcons();
 }
 
@@ -1856,14 +1849,19 @@ async function deleteDocument(id) {
 document.getElementById('form-costs').addEventListener('submit', async (e) => {
     e.preventDefault();
     const amount = parseFloat(document.getElementById('cost-amount').value);
+    const platformVal = document.getElementById('cost-platform-value')?.value || '';
     const logData = {
         date: document.getElementById('cost-date').value + 'T12:00:00Z',
         vehicle_id: state.activeVehicleId,
         type: document.getElementById('cost-type-value').value,
         amount: amount,
+        platform: platformVal,
         description: document.getElementById('cost-desc').value || '',
         obs: document.getElementById('cost-obs').value || ''
     };
+    if (state.activeJornada) {
+        logData.jornada_id = state.activeJornada.id;
+    }
 
     const { data, error } = await window.db.costs.add(logData);
     if (error) {
@@ -1887,6 +1885,16 @@ costTypeChips.forEach(chip => {
         costTypeChips.forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
         document.getElementById('cost-type-value').value = chip.dataset.type;
+    });
+});
+
+// Cost Platform Chip Selector
+const costPlatformChips = document.querySelectorAll('#cost-platform-selector .btn-chip-sm');
+costPlatformChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+        costPlatformChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        document.getElementById('cost-platform-value').value = chip.dataset.plat;
     });
 });
 
@@ -1945,18 +1953,20 @@ function renderCosts() {
         .filter(c => c.vehicleId === state.activeVehicleId || !c.vehicleId)
         .sort((a,b) => new Date(b.date) - new Date(a.date))
         .forEach(c => {
+        const platformBadge = c.platform ? `<span style="display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; background: rgba(255,140,0,0.12); color: var(--accent-orange); border: 1px solid rgba(255,140,0,0.2);">${c.platform}</span>` : '';
         const div = document.createElement('div');
         div.className = 'glass-card';
         div.style.borderLeft = '4px solid #ff7675';
+        div.style.marginBottom = '12px';
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
-                    <h4 style="margin-bottom: 4px;">${c.type}</h4>
+                    <h4 style="margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${c.type}${platformBadge}</h4>
                     <span class="text-caption">${c.desc || 'Sem descrição'}</span><br>
                     <span class="text-caption" style="font-size: 11px; opacity: 0.7;">${new Date(c.date).toLocaleDateString('pt-BR')}</span>
                 </div>
                 <div style="text-align: right;">
-                    <strong>R$ ${c.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    <strong style="color: #ff7675;">R$ ${c.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                     <div style="margin-top: 10px;">
                         <button onclick="deleteCost('${c.id}')" class="text-caption" style="color: var(--danger); border: none; background: none; font-weight: 600; cursor: pointer;">Deletar</button>
                     </div>
