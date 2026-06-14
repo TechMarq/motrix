@@ -18,12 +18,13 @@ const auth = firebase.auth();
 const fbDb = firebase.firestore();
 const storage = firebase.storage();
 
-// Variável para armazenar o estado de login conforme db.auth.getUser() em app.js
-let currentUser = null;
+// Variável global para compartilhar o estado com app.js
+var currentUser = null;
 
 // Para alinhar currentUser com o app.js
 auth.onAuthStateChanged(user => {
     currentUser = user;
+    window.currentUser = user;
 });
 
 // ==========================================
@@ -72,24 +73,29 @@ window.db = {
     vehicles: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('vehicles')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('created_at', 'asc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) {
-                // Ignore index errors if order by is not indexed yet
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('vehicles').where('user_id', '==', currentUser.uid).get();
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (a.created_at || '').localeCompare(b.created_at || ''));
+                console.warn("Erro ao buscar veículos com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('vehicles').where('user_id', '==', user.uid).get();
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (a.created_at || '').localeCompare(a.created_at || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de veículos:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error };
             }
         },
         async add(vehicle) {
             try {
-                vehicle.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                vehicle.user_id = user.uid;
                 vehicle.created_at = new Date().toISOString();
                 const docRef = await fbDb.collection('vehicles').add(vehicle);
                 vehicle.id = docRef.id;
@@ -113,23 +119,29 @@ window.db = {
     fuel: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('fuel_logs')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('date', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('fuel_logs').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar abastecimentos com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('fuel_logs').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de abastecimentos:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(log) {
             try {
-                log.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                log.user_id = user.uid;
                 const docRef = await fbDb.collection('fuel_logs').add(log);
                 log.id = docRef.id;
                 return { data: [log], error: null };
@@ -152,23 +164,29 @@ window.db = {
     maintenance: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('maintenance_logs')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('date', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('maintenance_logs').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar manutenções com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('maintenance_logs').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de manutenções:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(log) {
             try {
-                log.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                log.user_id = user.uid;
                 const docRef = await fbDb.collection('maintenance_logs').add(log);
                 log.id = docRef.id;
                 return { data: [log], error: null };
@@ -191,23 +209,29 @@ window.db = {
     costs: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('costs_logs')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('date', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('costs_logs').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar despesas com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('costs_logs').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de despesas:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(log) {
             try {
-                log.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                log.user_id = user.uid;
                 const docRef = await fbDb.collection('costs_logs').add(log);
                 log.id = docRef.id;
                 return { data: [log], error: null };
@@ -223,23 +247,29 @@ window.db = {
     billing: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('billing_logs')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('date', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('billing_logs').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar ganhos com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('billing_logs').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.date || '').localeCompare(a.date || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de ganhos:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(log) {
             try {
-                log.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                log.user_id = user.uid;
                 const docRef = await fbDb.collection('billing_logs').add(log);
                 log.id = docRef.id;
                 return { data: [log], error: null };
@@ -255,25 +285,31 @@ window.db = {
     documents: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('documents')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('created_at', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('documents').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar documentos com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('documents').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de documentos:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(docData, file) {
             try {
-                docData.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                docData.user_id = user.uid;
                 const fileExt = file.name ? file.name.split('.').pop() : (file.type === 'application/pdf' ? 'pdf' : 'jpg');
-                const fileName = `${currentUser.uid}/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${fileExt}`;
+                const fileName = `${user.uid}/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${fileExt}`;
                 
                 const ref = storage.ref().child(`motrix_docs/${fileName}`);
                 await ref.put(file);
@@ -302,23 +338,29 @@ window.db = {
     jornadas: {
         async getAll() {
             try {
-                if(!currentUser) return {data: [], error: null};
+                const user = auth.currentUser || currentUser;
+                if(!user) return {data: [], error: null};
                 const snapshot = await fbDb.collection('jornadas')
-                    .where('user_id', '==', currentUser.uid)
+                    .where('user_id', '==', user.uid)
                     .orderBy('created_at', 'desc').get();
                 return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
             } catch (error) { 
-                if (error.message.includes("requires an index")) {
-                    const snapshot = await fbDb.collection('jornadas').where('user_id', '==', currentUser.uid).get();
+                console.warn("Erro ao buscar jornadas com ordenação:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    const snapshot = await fbDb.collection('jornadas').where('user_id', '==', user.uid).get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
                     return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de jornadas:", fallbackError);
+                    return { data: null, error: fallbackError };
                 }
-                return { data: null, error }; 
             }
         },
         async add(jornada) {
             try {
-                jornada.user_id = currentUser.uid;
+                const user = auth.currentUser || currentUser;
+                jornada.user_id = user.uid;
                 jornada.created_at = new Date().toISOString();
                 const docRef = await fbDb.collection('jornadas').add(jornada);
                 jornada.id = docRef.id;
@@ -337,6 +379,42 @@ window.db = {
                 await fbDb.collection('jornadas').doc(id).delete();
                 return { error: null };
             } catch (error) { return { error }; }
+        }
+    },
+    profile: {
+        async get() {
+            try {
+                const user = auth.currentUser || currentUser;
+                if (!user) return { data: null, error: null };
+                const doc = await fbDb.collection('profiles').doc(user.uid).get();
+                if (doc.exists) {
+                    return { data: doc.data(), error: null };
+                } else {
+                    const newProfile = {
+                        user_id: user.uid,
+                        email: user.email,
+                        name: user.displayName || "",
+                        phone: "",
+                        is_premium: false,
+                        current_period_end: null
+                    };
+                    await fbDb.collection('profiles').doc(user.uid).set(newProfile);
+                    return { data: newProfile, error: null };
+                }
+            } catch (error) {
+                console.error("Erro no profile.get:", error);
+                return { data: null, error };
+            }
+        },
+        async update(profileData) {
+            try {
+                const user = auth.currentUser || currentUser;
+                if (!user) return { error: new Error("Usuário não autenticado.") };
+                await fbDb.collection('profiles').doc(user.uid).update(profileData);
+                return { error: null };
+            } catch (error) {
+                return { error };
+            }
         }
     }
 };

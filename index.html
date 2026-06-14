@@ -32,6 +32,16 @@
         <div class="glass-card" style="width: 100%; max-width: 380px; text-align: left; padding: 30px 20px; z-index: 1; border: 1px solid rgba(255,255,255,0.05);">
             <h2 id="auth-title" style="color: white; font-size: 24px; font-weight: 800; margin-bottom: 20px; text-align: center;">Acessar Conta</h2>
             <form id="form-login" onsubmit="handleAuth(event)">
+                <div id="group-signup-fields" style="display: none;">
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">NOME COMPLETO</label>
+                        <input type="text" id="login-name" class="form-control" placeholder="Seu nome completo" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">TELEFONE / WHATSAPP</label>
+                        <input type="tel" id="login-phone" class="form-control" placeholder="(11) 99999-9999" oninput="formatPhoneInput(this)" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px;">
+                    </div>
+                </div>
                 <div class="form-group">
                     <label style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">E-MAIL</label>
                     <input type="email" id="login-email" class="form-control" placeholder="seu@email.com" required style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px;">
@@ -136,13 +146,13 @@
             
             <!-- TOP ROW: KM & NEXT MAINT -->
             <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; margin-bottom: 8px;">
-                <div class="glass-card card-compact km-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: center;">
+                <div class="glass-card card-compact km-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; cursor: pointer;" onclick="switchView('history'); switchHistoryTab('fuel');">
                     <h4>KM ATUAL</h4>
                     <div id="stat-km-actual" class="value" style="font-size: 26px;">0</div>
                     <p class="text-caption" style="font-size: 10px;">hodômetro</p>
                 </div>
 
-                <div id="next-maint-info-card" class="glass-card card-compact" style="display: none; background: rgba(255,140,0,0.05); border: 1px solid rgba(255,140,0,0.1); margin-bottom: 0;">
+                <div id="next-maint-info-card" class="glass-card card-compact" style="display: none; background: rgba(255,140,0,0.05); border: 1px solid rgba(255,140,0,0.1); margin-bottom: 0; cursor: pointer;" onclick="switchView('history'); switchHistoryTab('maintenance');">
                     <p class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 10px; margin-bottom: 2px;">Próxima Manutenção</p>
                     <h3 id="dash-next-maint-type" style="font-size: 13px; color: var(--accent-orange); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</h3>
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 2px;">
@@ -216,7 +226,7 @@
             </div>
 
             <!-- NEW: NET PROFIT CARD -->
-            <div class="glass-card card-compact" style="background: linear-gradient(135deg, #00ff88 0%, #00d2ff 100%); color: #000; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="glass-card card-compact" style="background: linear-gradient(135deg, #00ff88 0%, #00d2ff 100%); color: #000; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="showProfitCalculationModal()">
                 <div>
                     <label class="text-caption" style="text-transform: uppercase; font-weight: 700; font-size: 10px; color: rgba(0,0,0,0.5);">Lucro Líquido Real (Mês)</label>
                     <div id="stat-profit-month" style="font-size: 26px; font-weight: 800;">R$ 0,00</div>
@@ -642,19 +652,79 @@
                 <button onclick="switchView('dashboard')" class="btn-icon" style="background: rgba(255,255,255,0.05);">
                     <i data-lucide="home"></i>
                 </button>
-                <h2 class="title-large" style="margin: 0;">Minha Carteira</h2>
+                <h2 class="title-large" style="margin: 0;">Documentos & Ajuda</h2>
             </div>
             
-            <div class="glass-card" style="margin-bottom: 24px;">
-                <p class="text-caption" style="margin-bottom: 16px;">Guarde aqui todos os documentos importantes do seu veículo e motorista para acesso rápido.</p>
-                <button onclick="document.getElementById('doc-upload').click()" class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <i data-lucide="upload"></i> Importar Documento
-                </button>
-                <input type="file" id="doc-upload" style="display: none;" onchange="handleDocUpload(event)" accept="image/*,application/pdf">
-                <p id="wallet-storage-msg" class="text-caption" style="margin-top: 10px; font-size: 10px; opacity: 0.6; text-align: center;">Formatos suportados: JPG, PNG, PDF (Máx 1MB)</p>
+            <div class="glass-card" onclick="alert('Porta-Documentos Digital: Este recurso estará disponível em breve!')" style="margin-bottom: 24px; opacity: 0.5; cursor: pointer; border: 1px dashed rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.01);">
+                <div style="pointer-events: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 class="text-caption" style="font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: #aaa; margin: 0;">Porta-Documentos Digital (CRLV, CNH...)</h3>
+                        <span class="badge-alert" style="background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.2); font-size: 9px; font-weight: 800; padding: 2px 8px; text-transform: uppercase;">EM BREVE ⏳</span>
+                    </div>
+                    <p class="text-caption" style="margin-bottom: 16px;">Guarde aqui fotos ou PDFs da CNH, documento do veículo (CRLV) e outras licenças importantes.</p>
+                    <button class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 0; background: #555; color: #aaa; cursor: not-allowed;">
+                        <i data-lucide="upload"></i> Upload desabilitado
+                    </button>
+                    <p id="wallet-storage-msg" class="text-caption" style="margin-top: 10px; font-size: 10px; opacity: 0.6; text-align: center;">Formatos suportados: JPG, PNG, PDF (Máx 1MB)</p>
+                </div>
             </div>
-            <div id="wallet-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <!-- Document cards will be injected here -->
+            <div id="wallet-list" style="display: none;">
+                <!-- Hidden during em breve stage -->
+            </div>
+            
+            <!-- System Documentation section -->
+            <div class="glass-card" style="border: 1px solid rgba(255, 140, 0, 0.15); padding: 20px;">
+                <h3 class="title-large" style="font-size: 18px; display: flex; align-items: center; gap: 8px; color: var(--accent-orange); margin-bottom: 12px;">
+                    <i data-lucide="help-circle" style="width: 20px; height: 20px;"></i>
+                    Ajuda & Documentação do Sistema
+                </h3>
+                <p class="text-caption" style="margin-bottom: 16px;">Entenda como funciona o sistema e as regras de cálculo do app Motrix.</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Topic 1 -->
+                    <details style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                        <summary style="font-weight: 600; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span>🚗 Como iniciar uma Jornada?</span>
+                            <i data-lucide="chevron-down" style="width: 14px;"></i>
+                        </summary>
+                        <p class="text-caption" style="margin-top: 8px; line-height: 1.4;">
+                            Vá até a aba de <strong>Jornadas</strong> ou use o botão central de ação rápida (+) e clique em <strong>Iniciar Jornada</strong>. Confirme o KM atual do hodômetro para começar o rastreamento do dia. Os ganhos e despesas inseridos durante uma jornada ativa serão automaticamente vinculados a ela para calcular o seu lucro líquido real do dia.
+                        </p>
+                    </details>
+                    
+                    <!-- Topic 2 -->
+                    <details style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                        <summary style="font-weight: 600; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span>⛽ Abastecimento e Consumo (km/L)</span>
+                            <i data-lucide="chevron-down" style="width: 14px;"></i>
+                        </summary>
+                        <p class="text-caption" style="margin-top: 8px; line-height: 1.4;">
+                            Para calcular a média de consumo do seu veículo, registre todos os abastecimentos preenchendo a data, o tipo de combustível, a quantidade de litros e o KM do painel. O sistema calcula automaticamente o consumo dividindo a distância rodada entre os abastecimentos pela quantidade de litros do último abastecimento.
+                        </p>
+                    </details>
+                    
+                    <!-- Topic 3 -->
+                    <details style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                        <summary style="font-weight: 600; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span>📊 Custo por KM e Lucro Real</span>
+                            <i data-lucide="chevron-down" style="width: 14px;"></i>
+                        </summary>
+                        <p class="text-caption" style="margin-top: 8px; line-height: 1.4;">
+                            O <strong>Custo por KM</strong> divide todas as despesas (combustível, manutenção, taxas, etc.) pelo total de KM rodados. O <strong>Lucro Líquido Real</strong> é calculado subtraindo todos os custos operacionais do seu faturamento bruto. Acompanhe a evolução detalhada na aba de <strong>Análise</strong>.
+                        </p>
+                    </details>
+                    
+                    <!-- Topic 4 -->
+                    <details style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px;">
+                        <summary style="font-weight: 600; cursor: pointer; color: white; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span>📂 Armazenamento de Documentos</span>
+                            <i data-lucide="chevron-down" style="width: 14px;"></i>
+                        </summary>
+                        <p class="text-caption" style="margin-top: 8px; line-height: 1.4;">
+                            Nesta mesma aba, você pode fazer upload de fotos ou PDFs dos seus documentos (como CNH e CRLV veicular). Eles ficarão salvos com segurança na nuvem e você poderá visualizá-los a qualquer momento clicando nos cards.
+                        </p>
+                    </details>
+                </div>
             </div>
             
             <!-- Document Preview Modal (Simple overlay) -->
@@ -666,6 +736,7 @@
                     <!-- Image or Iframe injected here -->
                 </div>
             </div>
+
         </section>
 
         <!-- COSTS VIEW -->
@@ -824,6 +895,27 @@
                     <div id="ana-profit-net" class="title-large" style="font-size: 32px; margin-top: 8px;">R$ 0,00</div>
                     <p id="ana-profit-msg" style="font-size: 11px; margin-top: 4px; opacity: 0.8;">(Faturamento - Custos Totais)</p>
                 </div>
+
+                <!-- Desempenho de Jornadas Grid -->
+                <h3 class="text-caption" style="margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Desempenho de Jornadas</h3>
+                <div class="stats-grid" style="margin-top: 8px; margin-bottom: 24px;">
+                    <div class="glass-card stat-item" style="margin-bottom: 0;">
+                        <label>Tempo Trabalhado</label>
+                        <strong id="ana-jornadas-hours" class="value" style="font-size: 18px; font-weight: 600; margin-top: 4px; display: block;">0h 0m</strong>
+                    </div>
+                    <div class="glass-card stat-item" style="margin-bottom: 0;">
+                        <label>Lucro / Hora</label>
+                        <strong id="ana-jornadas-profit-hour" class="value" style="font-size: 18px; font-weight: 600; margin-top: 4px; display: block; color: #00ff88;">R$ 0,00</strong>
+                    </div>
+                    <div class="glass-card stat-item" style="margin-bottom: 0;">
+                        <label>KM Rodados</label>
+                        <strong id="ana-jornadas-km" class="value" style="font-size: 18px; font-weight: 600; margin-top: 4px; display: block;">0 KM</strong>
+                    </div>
+                    <div class="glass-card stat-item" style="margin-bottom: 0;">
+                        <label>Lucro / KM</label>
+                        <strong id="ana-jornadas-profit-km" class="value" style="font-size: 18px; font-weight: 600; margin-top: 4px; display: block; color: #00f2ff;">R$ 0,00</strong>
+                    </div>
+                </div>
                 
                 <div class="glass-card">
                     <h3 class="text-caption" style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700;">Desempenho Semanal</h3>
@@ -886,6 +978,7 @@
                 <button class="btn-primary" onclick="promptStartJornada()" style="margin: 0 auto; background: #00ff88; color: black; font-weight: 800; max-width: 200px;">
                     Iniciar Jornada
                 </button>
+                <p id="jornada-limit-indicator" class="text-caption" style="margin-top: 15px; font-size: 11px; font-weight: 600; color: var(--accent-orange);"></p>
             </div>
 
             <!-- List of Shifts History -->
@@ -921,32 +1014,165 @@
         </div>
 
         <!-- BOTTOM NAVIGATION -->
-        <footer class="bottom-nav">
-            <div class="nav-item active" onclick="switchView('dashboard')">
-                <i data-lucide="home"></i>
-                <span>Início</span>
-            </div>
-            <div class="nav-item" onclick="switchView('jornadas')">
-                <i data-lucide="clock"></i>
-                <span>Jornadas</span>
+        <footer class="bottom-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 10px 25px;">
+            <!-- Grupo da Esquerda (3 itens) -->
+            <div style="display: flex; justify-content: space-around; flex: 1; align-items: center; margin-right: 5px;">
+                <div class="nav-item active" onclick="switchView('dashboard')">
+                    <i data-lucide="home"></i>
+                    <span>Início</span>
+                </div>
+                <div class="nav-item" onclick="switchView('jornadas')">
+                    <i data-lucide="clock"></i>
+                    <span>Jornadas</span>
+                </div>
+                <div class="nav-item" onclick="switchView('wallet')">
+                    <i data-lucide="folder-open"></i>
+                    <span>Documentos</span>
+                </div>
             </div>
             
             <!-- CENTRAL FAB -->
-            <div id="fab-main" class="nav-fab" onclick="toggleQuickActions()">
-                <div class="fab-circle">
+            <div id="fab-main" class="nav-fab" style="margin: 0 5px;">
+                <div class="fab-circle" onclick="toggleQuickActions()">
                     <i data-lucide="plus"></i>
                 </div>
             </div>
 
-            <div class="nav-item" onclick="switchView('billing')">
-                <i data-lucide="banknote"></i>
-                <span>Ganhos</span>
-            </div>
-            <div class="nav-item" onclick="switchView('costs')">
-                <i data-lucide="layers"></i>
-                <span>Custos</span>
+            <!-- Grupo da Direita (3 itens) -->
+            <div style="display: flex; justify-content: space-around; flex: 1; align-items: center; margin-left: 5px;">
+                <div class="nav-item" onclick="switchView('billing')">
+                    <i data-lucide="banknote"></i>
+                    <span>Ganhos</span>
+                </div>
+                <div class="nav-item" onclick="switchView('costs')">
+                    <i data-lucide="layers"></i>
+                    <span>Custos</span>
+                </div>
+                <div class="nav-item" onclick="switchView('analytics')">
+                    <i data-lucide="bar-chart-2"></i>
+                    <span>Análise</span>
+                </div>
             </div>
         </footer>
+
+        <!-- Profit Explanation Modal (Global placement) -->
+        <div id="modal-profit-explanation" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; padding: 20px; align-items: center; justify-content: center; display: none;">
+            <div class="glass-card" style="width: 100%; max-width: 400px; padding: 20px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 class="title-large" style="font-size: 18px; color: white; margin: 0;">Detalhamento do Lucro</h3>
+                    <button onclick="closeProfitExplanationModal()" class="btn-icon" style="background: rgba(255,255,255,0.05); color: #888; border: none; padding: 6px; cursor: pointer;"><i data-lucide="x"></i></button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 14px; font-size: 14px;">
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="color: #aaa;">💰 Faturamento Bruto (Mês)</span>
+                        <strong id="explain-faturamento" style="color: #00ff88;">R$ 0,00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="color: #aaa;">⛽ Combustível (Mês)</span>
+                        <strong id="explain-combustivel" style="color: #ff4d4d;">- R$ 0,00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="color: #aaa;">🔧 Manutenções (Mês)</span>
+                        <strong id="explain-manutencao" style="color: #ff4d4d;">- R$ 0,00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="color: #aaa;">⚙️ Outros Custos (Mês)</span>
+                        <strong id="explain-outros" style="color: #ff4d4d;">- R$ 0,00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px; padding: 12px; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.15); border-radius: 8px; align-items: center;">
+                        <span style="font-weight: 700; color: white;">= Lucro Líquido Real</span>
+                        <strong id="explain-lucro" style="color: #00ff88; font-size: 18px; font-weight: 800;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <p class="text-caption" style="margin-top: 16px; font-size: 11px; text-align: center; line-height: 1.4; color: #888;">
+                    * Este cálculo considera apenas os lançamentos feitos no mês atual para o veículo ativo.
+                </p>
+            </div>
+        </div>
+        
+        <!-- VIP Plans Modal (Checkout Gateway) -->
+        <div id="modal-vip-plans" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; padding: 20px; align-items: center; justify-content: center; display: none;">
+            <div class="glass-card" style="width: 100%; max-width: 420px; padding: 24px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 16px; position: relative;">
+                <button onclick="closeVipModal()" class="btn-icon" style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.05); color: #888; border: none; padding: 6px; cursor: pointer; border-radius: 50%;"><i data-lucide="x"></i></button>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(255,215,0,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: #ffd700;">
+                        <i data-lucide="crown" style="width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3 class="title-large" style="font-size: 22px; color: white; margin: 0;">Seja Motrix VIP 👑</h3>
+                    <p class="text-caption" style="margin-top: 4px; font-size: 13px;">Desbloqueie todo o poder da sua ferramenta de trabalho</p>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ddd;">
+                        <span style="color: #00ff88; font-weight: bold;">✔</span>
+                        <span>Jornadas diárias <strong>ilimitadas</strong> (sem limite de 3)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ddd;">
+                        <span style="color: #00ff88; font-weight: bold;">✔</span>
+                        <span>Cadastro de <strong>veículos ilimitados</strong> (frota)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ddd;">
+                        <span style="color: #00ff88; font-weight: bold;">✔</span>
+                        <span>Gráficos detalhados de <strong>Analytics</strong> e lucros</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ddd;">
+                        <span style="color: #00ff88; font-weight: bold;">✔</span>
+                        <span>Espaço <strong>ilimitado</strong> para porta-documentos</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #ddd;">
+                        <span style="color: #00ff88; font-weight: bold;">✔</span>
+                        <span>Exportação de relatórios em <strong>PDF</strong></span>
+                    </div>
+                </div>
+
+                <!-- Price Card -->
+                <div style="background: rgba(255, 140, 0, 0.05); border: 1px solid rgba(255, 140, 0, 0.15); border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 20px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: var(--accent-orange); font-weight: 700; letter-spacing: 0.5px;">Acesso de 30 Dias</span>
+                    <div style="margin: 6px 0; display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                        <span style="color: white; font-size: 16px; font-weight: 600;">R$</span>
+                        <strong style="color: white; font-size: 32px; font-weight: 800;">19,90</strong>
+                        <span style="color: #888; font-size: 12px;">/único</span>
+                    </div>
+                    <p class="text-caption" style="font-size: 10px; line-height: 1.3; margin: 0; color: #888;">
+                        * Pagamento único via PIX ou Cartão. Sem assinaturas forçadas ou cobrança automática.
+                    </p>
+                </div>
+
+                <div id="checkout-loading" style="display: none; text-align: center; margin-bottom: 15px;">
+                    <span style="font-size: 12px; color: var(--accent-orange); font-weight: bold;">Gerando QR Code PIX seguro...</span>
+                </div>
+
+                <button id="btn-start-checkout" onclick="startCheckout()" class="btn-primary" style="width: 100%; margin: 0; background: #00ff88; color: black; font-weight: 800; font-size: 15px; border-radius: 10px; padding: 12px;">
+                    Quero ser VIP agora
+                </button>
+
+                <div id="pix-payment-area" style="display: none; text-align: center; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                    <p style="font-size: 13px; color: #fff; font-weight: 700; margin-bottom: 10px;">Escaneie o QR Code abaixo:</p>
+                    <div style="background: white; padding: 10px; border-radius: 12px; display: inline-block; margin-bottom: 15px;">
+                        <img id="pix-qr-image" src="" alt="QR Code PIX" style="width: 200px; height: 200px; display: block; margin: 0 auto;">
+                    </div>
+                    
+                    <p style="font-size: 11px; color: #aaa; margin-bottom: 5px;">Ou copie o código Copia e Cola:</p>
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                        <input type="text" id="pix-copia-cola-text" readonly style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 8px; flex: 1; font-size: 11px; text-overflow: ellipsis; outline: none;" onclick="this.select()">
+                        <button type="button" onclick="copyPixCode()" class="btn-primary" style="margin: 0; width: auto; font-size: 12px; padding: 10px 14px; background: var(--accent-orange); border: none;">Copiar</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #00ff88; font-weight: bold;">
+                        <div class="pix-spinner" style="border: 2px solid rgba(0,255,136,0.2); border-left-color: #00ff88; border-radius: 50%; width: 12px; height: 12px; display: inline-block; animation: pix-spin 1s linear infinite;"></div>
+                        <span>Aguardando pagamento instantâneo...</span>
+                    </div>
+                </div>
+
+                <style>
+                    @keyframes pix-spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+        </div>
     </div>
 
     <!-- FIREBASE CLIENT & CONFIG -->
@@ -954,6 +1180,27 @@
     <script src="app.js"></script>
 
     <script>
+        // =============================================
+        // MASCARA DE TELEFONE DILIGENTE
+        // =============================================
+        function formatPhoneInput(input) {
+            let value = input.value.replace(/\D/g, "");
+            if (value.length > 11) {
+                value = value.slice(0, 11);
+            }
+            if (value.length > 10) {
+                input.value = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3, 7)}-${value.slice(7)}`;
+            } else if (value.length > 6) {
+                input.value = `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
+            } else if (value.length > 2) {
+                input.value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+            } else if (value.length > 0) {
+                input.value = `(${value}`;
+            } else {
+                input.value = "";
+            }
+        }
+
         // =============================================
         // TOGGLE MOSTRAR / OCULTAR SENHA
         // =============================================
@@ -1002,12 +1249,15 @@
 
             errorMsg.style.display = 'none';
 
+            const signupFieldsGrp = document.getElementById('group-signup-fields');
+
             if (_isSignupMode) {
                 title.textContent        = 'Criar Conta';
                 btnSubmit.textContent    = 'CRIAR CONTA';
                 textToggle.textContent   = 'Já tem uma conta?';
                 linkToggle.textContent   = 'Fazer Login';
                 confirmGrp.style.display = 'block';
+                if (signupFieldsGrp) signupFieldsGrp.style.display = 'block';
                 forgotLink.style.display = 'none';
             } else {
                 title.textContent        = 'Acessar Conta';
@@ -1015,6 +1265,7 @@
                 textToggle.textContent   = 'Não tem uma conta?';
                 linkToggle.textContent   = 'Criar Conta Grátis';
                 confirmGrp.style.display = 'none';
+                if (signupFieldsGrp) signupFieldsGrp.style.display = 'none';
                 forgotLink.style.display = '';
                 document.getElementById('login-password-confirm').type = 'password';
                 document.getElementById('toggle-confirm-icon').setAttribute('data-lucide', 'eye');
@@ -1073,6 +1324,22 @@
             try {
                 if (_isSignupMode) {
                     // ---- CADASTRO ----
+                    const name = document.getElementById('login-name').value.trim();
+                    const phone = document.getElementById('login-phone').value.trim();
+                    
+                    if (!name) {
+                        errorMsg.style.color   = '#ff7675';
+                        errorMsg.textContent   = 'O nome completo é obrigatório.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    if (!phone) {
+                        errorMsg.style.color   = '#ff7675';
+                        errorMsg.textContent   = 'O telefone/whatsapp é obrigatório.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+
                     const confirm = document.getElementById('login-password-confirm').value;
                     if (password !== confirm) {
                         errorMsg.style.color   = '#ff7675';
@@ -1088,6 +1355,18 @@
                     }
 
                     const userCred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                    
+                    // Salva o perfil no Firestore
+                    await firebase.firestore().collection('profiles').doc(userCred.user.uid).set({
+                        user_id: userCred.user.uid,
+                        email: email,
+                        name: name,
+                        phone: phone,
+                        is_premium: false,
+                        current_period_end: null,
+                        created_at: new Date().toISOString()
+                    });
+
                     await userCred.user.sendEmailVerification();
                     await firebase.auth().signOut();
 
@@ -1110,7 +1389,8 @@
                         errorMsg.innerHTML     = '📧 E-mail não verificado. Confirme antes de entrar.<br><small style="opacity:0.8;"><a href="#" onclick="resendVerification(\'' + email.replace(/'/g, "\\'") + '\',\'' + password.replace(/'/g, "\\'") + '\',event)" style="color:#ff8c00;">Reenviar e-mail de verificação</a></small>';
                         return;
                     }
-                    // Login bem-sucedido — app.js cuida do onAuthStateChanged
+                    // Login bem-sucedido — Recarrega para inicializar o app com a sessão ativa
+                    window.location.reload();
                 }
             } catch (err) {
                 let msg = 'Erro desconhecido. Tente novamente.';
@@ -1142,6 +1422,18 @@
                 errorMsg.textContent = '✅ E-mail de verificação reenviado!';
             } catch(err) {
                 errorMsg.textContent = 'Erro ao reenviar. Tente novamente.';
+        }
+
+        // =============================================
+        // COPIAR CÓDIGO PIX COPIA E COLA
+        // =============================================
+        function copyPixCode() {
+            const input = document.getElementById('pix-copia-cola-text');
+            if (input && input.value) {
+                input.select();
+                input.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(input.value);
+                alert("Código PIX Copia e Cola copiado com sucesso!");
             }
         }
     </script>

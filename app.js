@@ -24,135 +24,150 @@ let charts = {}; // Store Chart.js instances
 
 // INITIALIZE
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Tenta recuperar sessão ativa no Firebase
-    const user = await window.db.auth.getUser();
-    
-    if (!user) {
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('app').style.display = 'none';
-        lucide.createIcons();
-        return;
-    }
+    try {
+        // 1. Tenta recuperar sessão ativa no Firebase
+        const user = await window.db.auth.getUser();
+        
+        if (!user) {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+            lucide.createIcons();
+            return;
+        }
 
-    // 2. Block access if email not verified
-    if (!user.emailVerified) {
-        await firebase.auth().signOut();
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('app').style.display = 'none';
-        lucide.createIcons();
-        return;
+        // 2. Block access if email not verified
+        if (!user.emailVerified) {
+            await firebase.auth().signOut();
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+            lucide.createIcons();
+            return;
+        }
+        
+        currentUser = user; // Salva o usuário global
+        window.currentUser = user;
+        initializeApp();
+    } catch (e) {
+        alert("Erro no DOMContentLoaded: " + e.message + "\n" + e.stack);
     }
-    
-    currentUser = user; // Salva o usuário global
-    initializeApp();
 });
 
 // Auth functions (toggleAuthMode, handleAuth, forgotPassword) are defined in
 // the inline <script> in index.html where they also handle Firebase email verification.
 
 async function initializeApp() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    try {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
 
-    if (currentUser && currentUser.email) {
-        const emailEl = document.getElementById('auth-email-display');
-        if (emailEl) emailEl.innerText = currentUser.email;
-    }
-
-    loadState(); // Offline data (if any)
-    
-    // FETCH REALCLOUD VEHICLES
-    const { data: cloudVehicles, error } = await window.db.vehicles.getAll();
-    if (!error && cloudVehicles) {
-        state.vehicles = cloudVehicles;
-        // Map any old 'initialKm' fields to initial_km to keep front-end compatibility
-        state.vehicles.forEach(v => {
-            if (v.initial_km !== undefined) v.initialKm = v.initial_km;
-        });
-        
-        // Verifica e seleciona um ID ativo válido
-        if (state.vehicles.length > 0 && (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId))) {
-            state.activeVehicleId = state.vehicles[0].id;
-        } else if (state.vehicles.length === 0) {
-            state.activeVehicleId = null;
+        if (currentUser && currentUser.email) {
+            const emailEl = document.getElementById('auth-email-display');
+            if (emailEl) emailEl.innerText = currentUser.email;
         }
-    }
 
-    // FETCH REALCLOUD FUEL & MAINTENANCE
-    const { data: cloudFuel } = await window.db.fuel.getAll();
-    if (cloudFuel) {
-        state.fuelLogs = cloudFuel.map(f => ({
-            ...f,
-            vehicleId: f.vehicle_id
-        }));
-    }
+        loadState(); // Offline data (if any)
+        
+        // FETCH REALCLOUD PROFILE
+        const { data: cloudProfile } = await window.db.profile.get();
+        if (cloudProfile) {
+            const now = new Date();
+            const periodEnd = cloudProfile.current_period_end ? new Date(cloudProfile.current_period_end) : null;
+            state.isPremium = !!(periodEnd && periodEnd > now);
+        }
+        const { data: cloudVehicles, error } = await window.db.vehicles.getAll();
+        if (!error && cloudVehicles) {
+            state.vehicles = cloudVehicles;
+            // Map any old 'initialKm' fields to initial_km to keep front-end compatibility
+            state.vehicles.forEach(v => {
+                if (v.initial_km !== undefined) v.initialKm = v.initial_km;
+            });
+            
+            // Verifica e seleciona um ID ativo válido
+            if (state.vehicles.length > 0 && (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId))) {
+                state.activeVehicleId = state.vehicles[0].id;
+            } else if (state.vehicles.length === 0) {
+                state.activeVehicleId = null;
+            }
+        }
 
-    const { data: cloudMaint } = await window.db.maintenance.getAll();
-    if (cloudMaint) {
-        state.maintenanceLogs = cloudMaint.map(m => ({
-            ...m,
-            vehicleId: m.vehicle_id,
-            intervalType: m.interval_type,
-            intervalVal: m.interval_val,
-            next: m.next_km,
-            nextDate: m.next_date,
-            status: m.status || 'pendente'
-        }));
-    }
-    
-    const { data: cloudCosts } = await window.db.costs.getAll();
-    if (cloudCosts) {
-        state.costsLogs = cloudCosts.map(c => ({
-            ...c,
-            vehicleId: c.vehicle_id,
-            desc: c.description
-        }));
-    }
+        // FETCH REALCLOUD FUEL & MAINTENANCE
+        const { data: cloudFuel } = await window.db.fuel.getAll();
+        if (cloudFuel) {
+            state.fuelLogs = cloudFuel.map(f => ({
+                ...f,
+                vehicleId: f.vehicle_id
+            }));
+        }
 
-    const { data: cloudBilling } = await window.db.billing.getAll();
-    if (cloudBilling) {
-        state.billingLogs = cloudBilling.map(b => ({
-            ...b,
-            vehicleId: b.vehicle_id
-        }));
-    }
+        const { data: cloudMaint } = await window.db.maintenance.getAll();
+        if (cloudMaint) {
+            state.maintenanceLogs = cloudMaint.map(m => ({
+                ...m,
+                vehicleId: m.vehicle_id,
+                intervalType: m.interval_type,
+                intervalVal: m.interval_val,
+                next: m.next_km,
+                nextDate: m.next_date,
+                status: m.status || 'pendente'
+            }));
+        }
+        
+        const { data: cloudCosts } = await window.db.costs.getAll();
+        if (cloudCosts) {
+            state.costsLogs = cloudCosts.map(c => ({
+                ...c,
+                vehicleId: c.vehicle_id,
+                desc: c.description
+            }));
+        }
 
-    const { data: cloudDocs } = await window.db.documents.getAll();
-    if (cloudDocs) {
-        state.documents = cloudDocs.map(d => ({
-            ...d,
-            vehicleId: d.vehicle_id,
-            data: d.file_url 
-        }));
-    }
+        const { data: cloudBilling } = await window.db.billing.getAll();
+        if (cloudBilling) {
+            state.billingLogs = cloudBilling.map(b => ({
+                ...b,
+                vehicleId: b.vehicle_id
+            }));
+        }
 
-    const { data: cloudJornadas } = await window.db.jornadas.getAll();
-    if (cloudJornadas) {
-        state.jornadas = cloudJornadas;
-        state.activeJornada = state.jornadas.find(j => j.status === 'active') || null;
-        updateJornadasUI();
-    }
+        const { data: cloudDocs } = await window.db.documents.getAll();
+        if (cloudDocs) {
+            state.documents = cloudDocs.map(d => ({
+                ...d,
+                vehicleId: d.vehicle_id,
+                data: d.file_url 
+            }));
+        }
 
-    lucide.createIcons();
-    recalculateConsumptions();
-    updateDashboardUI();
-    
-    // Set default dates for forms
-    const today = new Date().toISOString().split('T')[0];
-    if (document.getElementById('fuel-date')) {
-        document.getElementById('fuel-date').value = today;
-    }
-    if (document.getElementById('maint-date')) {
-        document.getElementById('maint-date').value = today;
-    }
-    if (document.getElementById('bill-date')) {
-        document.getElementById('bill-date').value = today;
-    }
+        const { data: cloudJornadas } = await window.db.jornadas.getAll();
+        if (cloudJornadas) {
+            state.jornadas = cloudJornadas;
+            state.activeJornada = state.jornadas.find(j => j.status === 'active') || null;
+            updateJornadasUI();
+        }
 
-    if (state.vehicles.length === 0) {
-        const modal = document.getElementById('modal-vehicle');
-        modal.classList.add('active');
-        modal.style.display = 'block';
+        lucide.createIcons();
+        recalculateConsumptions();
+        switchView(state.currentView || 'dashboard');
+        
+        // Set default dates for forms
+        const today = new Date().toISOString().split('T')[0];
+        if (document.getElementById('fuel-date')) {
+            document.getElementById('fuel-date').value = today;
+        }
+        if (document.getElementById('maint-date')) {
+            document.getElementById('maint-date').value = today;
+        }
+        if (document.getElementById('bill-date')) {
+            document.getElementById('bill-date').value = today;
+        }
+
+        if (state.vehicles.length === 0) {
+            const modal = document.getElementById('modal-vehicle');
+            modal.classList.add('active');
+            modal.style.display = 'block';
+        }
+    } catch (e) {
+        alert("Erro no initializeApp: " + e.message + "\n" + e.stack);
     }
 }
 
@@ -228,6 +243,8 @@ function refreshUI() {
 
 // VIEW MANAGEMENT
 function switchView(viewId) {
+    state.currentView = viewId;
+    
     // 1. Close open modals/overlays
     document.querySelectorAll('.modal-overlay').forEach(m => {
         m.classList.remove('active');
@@ -249,7 +266,8 @@ function switchView(viewId) {
             'billing': 'ganhos',
             'fleet': 'frota',
             'costs': 'custos',
-            'analytics': 'análise'
+            'analytics': 'análise',
+            'wallet': 'documentos'
         };
         if (text === mapping[viewId]) item.classList.add('active');
     });
@@ -287,8 +305,6 @@ function switchView(viewId) {
         const billTag = document.getElementById('billing-jornada-tag');
         if (billTag) billTag.style.display = state.activeJornada ? 'block' : 'none';
     }
-
-    state.currentView = viewId;
 }
 
 function toggleVehicleModal() {
@@ -1285,6 +1301,15 @@ async function promptStartJornada() {
         return;
     }
 
+    if (!state.isPremium) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const journeysToday = (state.jornadas || []).filter(j => j && j.date_start === todayStr);
+        if (journeysToday.length >= 3) {
+            alert("📊 Limite Diário: No Plano Gratuito você pode iniciar no máximo 3 jornadas por dia. Assine o Motrix VIP para ter jornadas ilimitadas!");
+            return;
+        }
+    }
+
     if (!confirm("Deseja iniciar sua jornada de trabalho agora?")) {
         return;
     }
@@ -1388,6 +1413,30 @@ function updateJornadasUI() {
         if (inactiveBanner) inactiveBanner.style.display = 'flex';
     }
 
+    // Dynamic Journey Limit Indicator
+    const todayStr = new Date().toISOString().split('T')[0];
+    const journeysToday = (state.jornadas || []).filter(j => j && j.date_start === todayStr).length;
+
+    const dashInactiveBannerText = document.querySelector('#dash-jornada-inactive-banner span.text-caption');
+    if (dashInactiveBannerText) {
+        if (state.isPremium) {
+            dashInactiveBannerText.innerHTML = `Nenhuma jornada ativa • Hoje: <strong>${journeysToday}/Ilim.</strong>`;
+        } else {
+            dashInactiveBannerText.innerHTML = `Nenhuma jornada ativa • Hoje: <strong>${journeysToday}/3 (Grátis)</strong>`;
+        }
+    }
+
+    const limitIndicator = document.getElementById('jornada-limit-indicator');
+    if (limitIndicator) {
+        if (state.isPremium) {
+            limitIndicator.innerText = `Jornadas hoje: ${journeysToday} / Ilimitadas (Plano VIP 👑)`;
+            limitIndicator.style.color = '#00ff88';
+        } else {
+            limitIndicator.innerText = `Jornadas hoje: ${journeysToday} / 3 (Plano Grátis)`;
+            limitIndicator.style.color = 'var(--accent-orange)';
+        }
+    }
+
     // Quick Actions Shift Option UI
     const qaBtnText = document.getElementById('qa-jornada-text');
     const qaIconDiv = document.getElementById('qa-jornada-icon-div');
@@ -1413,15 +1462,18 @@ function updateJornadasUI() {
         if (active) {
             activeCard.style.display = 'block';
             inactiveCard.style.display = 'none';
-            document.getElementById('active-jornada-start-time').innerText = active.time_start + " (" + active.date_start.split('-').reverse().slice(0, 2).join('/') + ")";
-            document.getElementById('active-jornada-start-km').innerText = active.km_start.toLocaleString('pt-BR') + " KM";
+            const activeDateStart = active.date_start || '';
+            const activeTimeStart = active.time_start || '00:00';
+            const dateParts = activeDateStart ? activeDateStart.split('-').reverse().slice(0, 2).join('/') : '';
+            document.getElementById('active-jornada-start-time').innerText = activeTimeStart + (dateParts ? " (" + dateParts + ")" : "");
+            document.getElementById('active-jornada-start-km').innerText = (active.km_start || 0).toLocaleString('pt-BR') + " KM";
             
             // Calculate active duration
-            const startDateTime = new Date(active.date_start + 'T' + active.time_start + ':00');
+            const startDateTime = new Date((activeDateStart || new Date().toISOString().split('T')[0]) + 'T' + activeTimeStart + ':00');
             const diffMs = new Date() - startDateTime;
             const diffHrs = Math.floor(diffMs / 3600000);
             const diffMins = Math.floor((diffMs % 3600000) / 60000);
-            document.getElementById('active-jornada-duration').innerText = diffHrs + "h " + diffMins + "m";
+            document.getElementById('active-jornada-duration').innerText = (isNaN(diffHrs) ? 0 : diffHrs) + "h " + (isNaN(diffMins) ? 0 : diffMins) + "m";
         } else {
             activeCard.style.display = 'none';
             inactiveCard.style.display = 'block';
@@ -1440,7 +1492,7 @@ function renderJornadas() {
 
     list.innerHTML = '';
 
-    const finishedJornadas = state.jornadas.filter(j => j.status === 'finished');
+    const finishedJornadas = (state.jornadas || []).filter(j => j && j.status === 'finished');
 
     if (finishedJornadas.length === 0) {
         list.innerHTML = `<p class="text-caption" style="text-align: center; padding: 20px; opacity: 0.5;">Nenhuma jornada encerrada no histórico.</p>`;
@@ -1449,59 +1501,69 @@ function renderJornadas() {
 
     // List all finished journeys
     finishedJornadas.forEach(j => {
-        const startDateTime = new Date(j.date_start + 'T' + j.time_start + ':00');
-        const endDateTime = new Date(j.date_end + 'T' + j.time_end + ':00');
-        const diffMs = endDateTime - startDateTime;
-        const diffHrs = Math.floor(diffMs / 3600000);
-        const diffMins = Math.floor((diffMs % 3600000) / 60000);
+        try {
+            const date_start = j.date_start || '';
+            const time_start = j.time_start || '00:00';
+            const date_end = j.date_end || date_start || '';
+            const time_end = j.time_end || '00:00';
 
-        // Filter fuel, maintenance, costs and billing logs linked to this journey
-        const linkedBilling = state.billingLogs.filter(log => log.jornada_id === j.id);
-        const linkedFuel = state.fuelLogs.filter(log => log.jornada_id === j.id);
-        const linkedMaint = state.maintenanceLogs.filter(log => log.jornada_id === j.id);
-        const linkedCosts = state.costsLogs.filter(log => log.jornada_id === j.id);
+            const startDateTime = new Date((date_start || new Date().toISOString().split('T')[0]) + 'T' + time_start + ':00');
+            const endDateTime = new Date((date_end || new Date().toISOString().split('T')[0]) + 'T' + time_end + ':00');
+            let diffMs = endDateTime - startDateTime;
+            if (isNaN(diffMs)) diffMs = 0;
+            const diffHrs = Math.floor(diffMs / 3600000);
+            const diffMins = Math.floor((diffMs % 3600000) / 60000);
 
-        const totalGanhos = linkedBilling.reduce((sum, log) => sum + (log.amount || 0), 0);
-        const totalCombustivel = linkedFuel.reduce((sum, log) => sum + (log.total || 0), 0);
-        const totalMaint = linkedMaint.reduce((sum, log) => sum + (log.cost || 0), 0);
-        const totalCosts = linkedCosts.reduce((sum, log) => sum + (log.amount || 0), 0);
+            // Filter fuel, maintenance, costs and billing logs linked to this journey
+            const linkedBilling = (state.billingLogs || []).filter(log => log && log.jornada_id === j.id);
+            const linkedFuel = (state.fuelLogs || []).filter(log => log && log.jornada_id === j.id);
+            const linkedMaint = (state.maintenanceLogs || []).filter(log => log && log.jornada_id === j.id);
+            const linkedCosts = (state.costsLogs || []).filter(log => log && log.jornada_id === j.id);
 
-        const totalSpent = totalCombustivel + totalMaint + totalCosts;
-        const netProfit = totalGanhos - totalSpent;
+            const totalGanhos = linkedBilling.reduce((sum, log) => sum + (log.amount || 0), 0);
+            const totalCombustivel = linkedFuel.reduce((sum, log) => sum + (log.total || 0), 0);
+            const totalMaint = linkedMaint.reduce((sum, log) => sum + (log.cost || 0), 0);
+            const totalCosts = linkedCosts.reduce((sum, log) => sum + (log.amount || 0), 0);
 
-        const dateLabel = j.date_start.split('-').reverse().join('/');
-        const kmDriven = j.km_end - j.km_start;
+            const totalSpent = totalCombustivel + totalMaint + totalCosts;
+            const netProfit = totalGanhos - totalSpent;
 
-        const div = document.createElement('div');
-        div.className = 'glass-card';
-        div.style.marginBottom = '12px';
-        div.style.borderLeft = `4px solid ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'}`;
-        div.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                <div>
-                    <strong style="font-size: 15px; color: white;">Jornada ${dateLabel}</strong>
-                    <span class="text-caption" style="display: block; font-size: 11px; margin-top: 2px;">
-                        <i data-lucide="clock" style="width: 10px; height: 10px; display: inline-block; vertical-align: middle;"></i> 
-                        ${j.time_start} às ${j.time_end} (${diffHrs}h ${diffMins}m)
-                    </span>
-                    <span class="text-caption" style="display: block; font-size: 11px;">
-                        🏁 ${kmDriven > 0 ? kmDriven + ' KM rodados' : 'KM não calculado'} (${j.km_start} KM a ${j.km_end} KM)
-                    </span>
+            const dateLabel = date_start ? date_start.split('-').reverse().join('/') : 'Sem data';
+            const kmDriven = (j.km_end || 0) - (j.km_start || 0);
+
+            const div = document.createElement('div');
+            div.className = 'glass-card';
+            div.style.marginBottom = '12px';
+            div.style.borderLeft = `4px solid ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'}`;
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <div>
+                        <strong style="font-size: 15px; color: white;">Jornada ${dateLabel}</strong>
+                        <span class="text-caption" style="display: block; font-size: 11px; margin-top: 2px;">
+                            <i data-lucide="clock" style="width: 10px; height: 10px; display: inline-block; vertical-align: middle;"></i> 
+                            ${time_start} às ${time_end} (${diffHrs}h ${diffMins}m)
+                        </span>
+                        <span class="text-caption" style="display: block; font-size: 11px;">
+                            🏁 ${kmDriven > 0 ? kmDriven + ' KM rodados' : 'KM não calculado'} (${(j.km_start || 0)} KM a ${(j.km_end || 0)} KM)
+                        </span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="text-caption" style="font-size: 9px; text-transform: uppercase; display: block; opacity: 0.6;">LUCRO LÍQUIDO</span>
+                        <strong style="display: block; font-size: 16px; color: ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'};">
+                            R$ ${netProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </strong>
+                    </div>
                 </div>
-                <div style="text-align: right;">
-                    <span class="text-caption" style="font-size: 9px; text-transform: uppercase; display: block; opacity: 0.6;">LUCRO LÍQUIDO</span>
-                    <strong style="display: block; font-size: 16px; color: ${netProfit >= 0 ? '#00ff88' : '#ff4d4d'};">
-                        R$ ${netProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </strong>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size: 12px; color: #aaa;">Ganhos: <strong style="color: #00f2ff;">R$ ${totalGanhos.toFixed(2)}</strong></div>
+                    <div style="font-size: 12px; color: #aaa; text-align: right;">Gastos: <strong style="color: #ff7675;">R$ ${totalSpent.toFixed(2)}</strong></div>
                 </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="font-size: 12px; color: #aaa;">Ganhos: <strong style="color: #00f2ff;">R$ ${totalGanhos.toFixed(2)}</strong></div>
-                <div style="font-size: 12px; color: #aaa; text-align: right;">Gastos: <strong style="color: #ff7675;">R$ ${totalSpent.toFixed(2)}</strong></div>
-            </div>
-        `;
-        list.appendChild(div);
+            `;
+            list.appendChild(div);
+        } catch (e) {
+            console.error("Erro ao renderizar jornada individual:", j, e);
+        }
     });
     lucide.createIcons();
 }
@@ -2049,7 +2111,6 @@ function renderAnalytics() {
 
     const vId = state.activeVehicleId;
 
-
     // 1. Filter Logs (Include orphans as fallback for the active car)
     const filteredBilling = state.billingLogs.filter(l => 
         (l.vehicleId === vId || !l.vehicleId) && isWithinPeriod(l.date, period)
@@ -2067,6 +2128,61 @@ function renderAnalytics() {
 
     const msgEl = document.getElementById('ana-profit-msg');
     if (msgEl) msgEl.innerText = `(Ganhos R$ ${totalRevenue.toFixed(2)} - Gastos R$ ${totalCosts.toFixed(2)})`;
+
+    // Calculate Journey Performance Metrics
+    const finishedJornadas = (state.jornadas || []).filter(j => 
+        j && j.status === 'finished' && (j.vehicle_id === vId || !j.vehicle_id) && isWithinPeriod(j.date_start, period)
+    );
+
+    let totalDurationMs = 0;
+    let totalKmJornadas = 0;
+    let totalProfitJornadas = 0;
+
+    finishedJornadas.forEach(j => {
+        const date_start = j.date_start || '';
+        const time_start = j.time_start || '00:00';
+        const date_end = j.date_end || date_start || '';
+        const time_end = j.time_end || '00:00';
+
+        const startDateTime = new Date((date_start || new Date().toISOString().split('T')[0]) + 'T' + time_start + ':00');
+        const endDateTime = new Date((date_end || new Date().toISOString().split('T')[0]) + 'T' + time_end + ':00');
+        let diffMs = endDateTime - startDateTime;
+        if (isNaN(diffMs)) diffMs = 0;
+        if (diffMs > 0) totalDurationMs += diffMs;
+
+        const kmDriven = (j.km_end || 0) - (j.km_start || 0);
+        if (kmDriven > 0) totalKmJornadas += kmDriven;
+
+        // Calculate profit for this shift
+        const linkedBilling = state.billingLogs.filter(log => log.jornada_id === j.id);
+        const linkedFuel = state.fuelLogs.filter(log => log.jornada_id === j.id);
+        const linkedMaint = state.maintenanceLogs.filter(log => log.jornada_id === j.id);
+        const linkedCosts = state.costsLogs.filter(log => log.jornada_id === j.id);
+
+        const shiftGanhos = linkedBilling.reduce((sum, log) => sum + (log.amount || 0), 0);
+        const shiftGastos = linkedFuel.reduce((sum, log) => sum + (log.total || 0), 0) +
+                            linkedMaint.reduce((sum, log) => sum + (log.cost || 0), 0) +
+                            linkedCosts.reduce((sum, log) => sum + (log.amount || 0), 0);
+        totalProfitJornadas += (shiftGanhos - shiftGastos);
+    });
+
+    const totalHours = totalDurationMs / 3600000;
+    const hrsPart = Math.floor(totalHours);
+    const minsPart = Math.round((totalHours - hrsPart) * 60);
+
+    const profitPerHour = totalHours > 0 ? totalProfitJornadas / totalHours : 0;
+    const profitPerKm = totalKmJornadas > 0 ? totalProfitJornadas / totalKmJornadas : 0;
+
+    // Update UI Elements
+    const hoursEl = document.getElementById('ana-jornadas-hours');
+    const profitHourEl = document.getElementById('ana-jornadas-profit-hour');
+    const kmEl = document.getElementById('ana-jornadas-km');
+    const profitKmEl = document.getElementById('ana-jornadas-profit-km');
+
+    if (hoursEl) hoursEl.innerText = `${hrsPart}h ${minsPart}m`;
+    if (profitHourEl) profitHourEl.innerText = `R$ ${profitPerHour.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (kmEl) kmEl.innerText = `${totalKmJornadas.toLocaleString('pt-BR')} KM`;
+    if (profitKmEl) profitKmEl.innerText = `R$ ${profitPerKm.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
     // 2. Clear previous charts
     Object.values(charts).forEach(chart => { if(chart) chart.destroy(); });
@@ -2291,19 +2407,115 @@ async function deleteVehicle() {
 
 function becomePremium() {
     if (state.isPremium) {
-        if (confirm('Deseja desativar o modo VIP para testes?')) {
-            state.isPremium = false;
-            saveState();
-            location.reload();
-            alert('Modo Gratuito reativado.');
+        alert("Você já é um usuário VIP Motrix! Aproveite todos os recursos.");
+        return;
+    }
+    const modal = document.getElementById('modal-vip-plans');
+    if (modal) {
+        // Reseta o estado do modal de pagamento para o padrão
+        const btn = document.getElementById('btn-start-checkout');
+        const pixArea = document.getElementById('pix-payment-area');
+        if (btn) btn.style.display = 'block';
+        if (pixArea) pixArea.style.display = 'none';
+
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+}
+
+function closeVipModal() {
+    const modal = document.getElementById('modal-vip-plans');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+async function startCheckout() {
+    const user = window.currentUser || currentUser;
+    if (!user) {
+        alert("Por favor, faça login antes de assinar o plano.");
+        return;
+    }
+
+    const btn = document.getElementById('btn-start-checkout');
+    const loading = document.getElementById('checkout-loading');
+    if (btn) btn.disabled = true;
+    if (loading) loading.style.display = 'block';
+
+    try {
+        // Busca dados do perfil para enviar à API de checkout transparente
+        let name = "";
+        let phone = "";
+        try {
+            const { data: cloudProfile } = await window.db.profile.get();
+            if (cloudProfile) {
+                name = cloudProfile.name || "";
+                phone = cloudProfile.phone || "";
+            }
+        } catch(e) { console.warn("Erro ao buscar perfil:", e); }
+
+        const functionUrl = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+            ? "http://127.0.0.1:5001/motrix-18f53/us-central1/createPixPayment"
+            : "https://us-central1-motrix-18f53.cloudfunctions.net/createPixPayment";
+        
+        const response = await fetch(functionUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                userId: user.uid,
+                email: user.email,
+                name: name,
+                phone: phone
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error("Erro na resposta do servidor de pagamento.");
         }
-    } else {
-        if (confirm('Quer testar o modo VIP?\nIsso liberará múltiplos veículos, documentos ilimitados e relatórios avançados.')) {
-            state.isPremium = true;
-            saveState();
-            location.reload();
-            alert('Parabéns! Você agora é um usuário VIP Motrix.');
+
+        const data = await response.json();
+        if (data && data.brCode && data.brCodeBase64) {
+            if (btn) btn.style.display = 'none';
+            
+            const pixArea = document.getElementById('pix-payment-area');
+            const qrImage = document.getElementById('pix-qr-image');
+            const copiaCola = document.getElementById('pix-copia-cola-text');
+            
+            if (qrImage) qrImage.src = `data:image/png;base64,${data.brCodeBase64}`;
+            if (copiaCola) copiaCola.value = data.brCode;
+            if (pixArea) pixArea.style.display = 'block';
+
+            // Escuta atualizações do perfil em tempo real para ativar assim que o webhook atualizar
+            const userDocRef = firebase.firestore().collection('profiles').doc(user.uid);
+            const unsubscribe = userDocRef.onSnapshot(doc => {
+                if (doc.exists && doc.data().is_premium) {
+                    unsubscribe();
+                    alert("👑 Parabéns! Seu pagamento via PIX foi confirmado e o VIP foi ativado com sucesso!");
+                    location.reload();
+                }
+            });
+        } else {
+            throw new Error("Dados de pagamento PIX não recebidos.");
         }
+
+    } catch (err) {
+        console.error("Erro no checkout:", err);
+        alert("Não foi possível iniciar o checkout. Por favor, tente novamente mais tarde.");
+    } finally {
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
+    }
+}
+
+function cancelPremium() {
+    if (confirm('Deseja desativar o modo VIP para testes?')) {
+        state.isPremium = false;
+        saveState();
+        location.reload();
+        alert('Modo Gratuito reativado.');
     }
 }
 
@@ -2316,6 +2528,11 @@ function addNewFromHistory() {
 }
 
 function exportHistoryPDF() {
+    if (!state.isPremium) {
+        alert("📊 Recurso VIP: A exportação de relatórios em PDF está disponível apenas no plano Motrix VIP!");
+        return;
+    }
+
     if (!window.jspdf) {
         alert("O gerador de PDF está carregando, por favor tente novamente em alguns segundos.");
         return;
@@ -2421,5 +2638,59 @@ function toggleQuickActions() {
     } else {
         overlay.classList.add('active');
         fab.classList.add('active');
+    }
+}
+
+// NET PROFIT EXPLANATION MODAL LOGIC
+function showProfitCalculationModal() {
+    const modal = document.getElementById('modal-profit-explanation');
+    if (!modal) return;
+
+    // Get current active vehicle
+    const activeVehicle = state.vehicles.find(v => v.id === state.activeVehicleId);
+    if (!activeVehicle) return;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const filterThisMonth = (log) => {
+        if (!log.date || log.vehicleId !== state.activeVehicleId) return false;
+        const d = new Date(log.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    };
+
+    const fuelMonthLogs = (state.fuelLogs || []).filter(filterThisMonth);
+    const maintMonthLogs = (state.maintenanceLogs || []).filter(filterThisMonth);
+    const costsMonthLogs = (state.costsLogs || []).filter(filterThisMonth);
+    const billingMonthLogs = (state.billingLogs || []).filter(l => {
+        if (l.vehicleId !== state.activeVehicleId) return false;
+        const d = new Date(l.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const totalFuelMonth = fuelMonthLogs.reduce((acc, log) => acc + (log.total || 0), 0);
+    const totalMaintMonth = maintMonthLogs.reduce((acc, log) => acc + (log.cost || 0), 0);
+    const totalGeneralCostsMonth = costsMonthLogs.reduce((acc, log) => acc + (log.amount || 0), 0);
+    const totalRevenueMonth = billingMonthLogs.reduce((acc, log) => acc + (log.amount || 0), 0);
+
+    const totalSpentMonth = totalFuelMonth + totalMaintMonth;
+    const netProfitMonth = totalRevenueMonth - totalSpentMonth;
+
+    document.getElementById('explain-faturamento').innerText = `R$ ${totalRevenueMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('explain-combustivel').innerText = `- R$ ${totalFuelMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('explain-manutencao').innerText = `- R$ ${totalMaintMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('explain-outros').innerText = `- R$ ${totalGeneralCostsMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    document.getElementById('explain-lucro').innerText = `R$ ${netProfitMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+    modal.style.display = 'flex';
+    modal.classList.add('flex-active');
+}
+
+function closeProfitExplanationModal() {
+    const modal = document.getElementById('modal-profit-explanation');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('flex-active');
     }
 }
