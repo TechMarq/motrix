@@ -61,8 +61,8 @@ async function initializeApp() {
         document.getElementById('app').style.display = 'block';
 
         if (currentUser && currentUser.email) {
-            const emailEl = document.getElementById('auth-email-display');
-            if (emailEl) emailEl.innerText = currentUser.email;
+            const emailEl = document.getElementById('profile-email');
+            if (emailEl) emailEl.value = currentUser.email;
         }
 
         loadState(); // Offline data (if any)
@@ -73,6 +73,12 @@ async function initializeApp() {
             const now = new Date();
             const periodEnd = cloudProfile.current_period_end ? new Date(cloudProfile.current_period_end) : null;
             state.isPremium = !!(periodEnd && periodEnd > now);
+
+            // Preenche os campos do formulário de perfil
+            const nameEl = document.getElementById('profile-name');
+            if (nameEl) nameEl.value = cloudProfile.name || '';
+            const phoneEl = document.getElementById('profile-phone');
+            if (phoneEl) phoneEl.value = cloudProfile.phone || '';
         }
         const { data: cloudVehicles, error } = await window.db.vehicles.getAll();
         if (!error && cloudVehicles) {
@@ -2692,5 +2698,51 @@ function closeProfitExplanationModal() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('flex-active');
+    }
+}
+
+// =============================================
+// ATUALIZAÇÃO DO PERFIL DO USUÁRIO
+// =============================================
+async function updateUserProfile(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-profile');
+    const oriText = btn.innerText;
+    btn.innerText = "Salvando...";
+    btn.disabled = true;
+
+    const name = document.getElementById('profile-name').value.trim();
+    const phone = document.getElementById('profile-phone').value.trim();
+
+    try {
+        const { error } = await window.db.profile.update({ name, phone });
+        if (error) {
+            alert("Erro ao salvar perfil: " + error.message);
+        } else {
+            alert("Perfil atualizado com sucesso!");
+        }
+    } catch(err) {
+        alert("Erro: " + err.message);
+    } finally {
+        btn.innerText = oriText;
+        btn.disabled = false;
+    }
+}
+
+async function sendProfilePasswordReset(e) {
+    e.preventDefault();
+    if (!currentUser || !currentUser.email) return;
+    
+    if (confirm("Deseja enviar um e-mail de redefinição de senha para " + currentUser.email + "?")) {
+        try {
+            const { error } = await window.db.auth.resetPassword(currentUser.email);
+            if (error) {
+                alert("Erro ao enviar e-mail: " + error.message);
+            } else {
+                alert("E-mail de redefinição enviado com sucesso! Verifique sua caixa de entrada.");
+            }
+        } catch (err) {
+            alert("Erro: " + err.message);
+        }
     }
 }
