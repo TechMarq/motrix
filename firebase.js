@@ -416,5 +416,29 @@ window.db = {
                 return { error };
             }
         }
+    },
+    payments: {
+        async getAll() {
+            try {
+                const user = auth.currentUser || currentUser;
+                if (!user) return { data: [], error: null };
+                const snapshot = await fbDb.collection('payments')
+                    .where('user_id', '==', user.uid)
+                    .orderBy('created_at', 'desc').get();
+                return { data: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), error: null };
+            } catch (error) {
+                console.warn("Erro ao buscar histórico de pagamentos:", error);
+                try {
+                    const user = auth.currentUser || currentUser;
+                    if (!user) return { data: [], error: null };
+                    const snapshot = await fbDb.collection('payments').where('user_id', '==', user.uid).get();
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+                    return { data, error: null };
+                } catch (fallbackError) {
+                    console.error("Erro no fallback de pagamentos:", fallbackError);
+                    return { data: null, error: fallbackError };
+                }
+            }
+        }
     }
 };

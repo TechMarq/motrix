@@ -79,6 +79,9 @@ async function initializeApp() {
             if (nameEl) nameEl.value = cloudProfile.name || '';
             const phoneEl = document.getElementById('profile-phone');
             if (phoneEl) phoneEl.value = cloudProfile.phone || '';
+
+            // Carrega o histórico de pagamentos do app na configuração
+            loadPaymentHistory();
         }
         const { data: cloudVehicles, error } = await window.db.vehicles.getAll();
         if (!error && cloudVehicles) {
@@ -153,6 +156,7 @@ async function initializeApp() {
 
         lucide.createIcons();
         recalculateConsumptions();
+        setBillingFilterPreset('month');
         switchView(state.currentView || 'dashboard');
         
         // Set default dates for forms
@@ -323,6 +327,7 @@ function toggleVehicleModal() {
         modal.style.display = 'block';
         modal.classList.add('active');
         showVehicleList(); // Always start at the list screen
+        loadPaymentHistory(); // Fetch and render payments
     } else {
         if (state.vehicles.length === 0) {
             alert("Por favor, adicione um veículo para continuar.");
@@ -855,14 +860,29 @@ function renderBilling() {
     list.innerHTML = '';
     summary.innerHTML = '';
 
+    // Get filter dates
+    const startVal = document.getElementById('billing-filter-start')?.value;
+    const endVal = document.getElementById('billing-filter-end')?.value;
+    const startDate = startVal ? new Date(startVal + 'T00:00:00') : null;
+    const endDate = endVal ? new Date(endVal + 'T23:59:59') : null;
+
     // Financial Summary Logic
     let total = 0;
     const byPlatform = {};
 
-    state.billingLogs.filter(b => b.vehicleId === state.activeVehicleId || !b.vehicleId).forEach(b => {
-        total += b.amount;
-        byPlatform[b.platform] = (byPlatform[b.platform] || 0) + b.amount;
-    });
+    state.billingLogs
+        .filter(b => b.vehicleId === state.activeVehicleId || !b.vehicleId)
+        .filter(b => {
+            if (!b.date) return true;
+            const bDate = new Date(b.date);
+            if (startDate && bDate < startDate) return false;
+            if (endDate && bDate > endDate) return false;
+            return true;
+        })
+        .forEach(b => {
+            total += b.amount;
+            byPlatform[b.platform] = (byPlatform[b.platform] || 0) + b.amount;
+        });
 
     totalEl.innerText = `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
@@ -892,6 +912,13 @@ function renderBilling() {
     // List Gains
     state.billingLogs
         .filter(b => b.vehicleId === state.activeVehicleId || !b.vehicleId)
+        .filter(b => {
+            if (!b.date) return true;
+            const bDate = new Date(b.date);
+            if (startDate && bDate < startDate) return false;
+            if (endDate && bDate > endDate) return false;
+            return true;
+        })
         .sort((a,b) => new Date(b.date) - new Date(a.date))
         .forEach(b => {
         const div = document.createElement('div');
@@ -2745,4 +2772,254 @@ async function sendProfilePasswordReset(e) {
             alert("Erro: " + err.message);
         }
     }
+}
+
+// =============================================
+// HISTÓRICO DE PAGAMENTOS / FATURAMENTO
+// =============================================
+async function loadPaymentHistory() {
+    const container = document.getElementById('payment-history-list');
+    if (!container) return;
+
+    container.innerHTML = '<p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Carregando histórico...</p>';
+
+    try {
+        const { data: payments, error } = await window.db.payments.getAll();
+        if (error) {
+            container.innerHTML = `<p class="text-caption" style="text-align: center; color: var(--danger); padding: 10px;">Erro ao carregar pagamentos: ${error.message}</p>`;
+            return;
+        }
+
+        if (!payments || payments.length === 0) {
+            container.innerHTML = '<p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Nenhum pagamento registrado.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        payments.forEach(pay => {
+            const date = new Date(pay.created_at);
+            const formattedDate = date.toLocaleDateString('pt-BR');
+            const expiry = pay.expiry_date ? new Date(pay.expiry_date).toLocaleDateString('pt-BR') : '--';
+            const value = pay.amount ? (pay.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 19,90';
+
+            const div = document.createElement('div');
+            div.style.background = 'rgba(255, 255, 255, 0.03)';
+            div.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+            div.style.borderRadius = '8px';
+            div.style.padding = '10px';
+            div.style.fontSize = '12px';
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+
+            div.innerHTML = `
+                <div>
+                    <strong style="color: white; display: block;">Acesso VIP 30 Dias</strong>
+                    <span class="text-caption" style="font-size: 10px; display: block; margin-top: 2px;">
+                        Pago em: ${formattedDate} | Válido até: ${expiry}
+                    </span>
+                </div>
+                <div style="text-align: right;">
+                    <strong style="color: #00ff88; display: block;">${value}</strong>
+                    <span class="badge-alert" style="background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); font-size: 8px; padding: 1px 4px; border-radius: 4px; display: inline-block; margin-top: 2px;">
+                        ${pay.method || 'PIX'}
+                    </span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (err) {
+        container.innerHTML = `<p class="text-caption" style="text-align: center; color: var(--danger); padding: 10px;">Erro: ${err.message}</p>`;
+    }
+}
+
+// Variables to hold current payment history filters
+let currentPayMethodFilter = 'all';
+
+function openPaymentHistoryDetailModal() {
+    const modal = document.getElementById('modal-payment-history-detail');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Set default dates if needed, or leave empty for all
+        renderDetailedPayments();
+        lucide.createIcons();
+    }
+}
+
+function closePaymentHistoryDetailModal() {
+    const modal = document.getElementById('modal-payment-history-detail');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function setPayMethodFilter(method) {
+    currentPayMethodFilter = method;
+    
+    // Toggle active state on chips
+    const chips = ['all', 'pix', 'card'];
+    chips.forEach(c => {
+        const btn = document.getElementById(`btn-pay-method-${c}`);
+        if (btn) {
+            if (c === method.toLowerCase()) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    });
+
+    renderDetailedPayments();
+}
+
+async function renderDetailedPayments() {
+    const container = document.getElementById('detailed-payments-list');
+    if (!container) return;
+
+    container.innerHTML = '<p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Carregando pagamentos...</p>';
+
+    try {
+        const { data: payments, error } = await window.db.payments.getAll();
+        if (error) {
+            container.innerHTML = `<p class="text-caption" style="text-align: center; color: var(--danger); padding: 10px;">Erro: ${error.message}</p>`;
+            return;
+        }
+
+        if (!payments || payments.length === 0) {
+            container.innerHTML = '<p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Nenhum pagamento encontrado.</p>';
+            return;
+        }
+
+        // Get filter inputs
+        const startDateVal = document.getElementById('pay-filter-start')?.value;
+        const endDateVal = document.getElementById('pay-filter-end')?.value;
+        const sortOrder = document.getElementById('pay-sort-order')?.value || 'desc';
+
+        // Filter data
+        let filteredPayments = payments.filter(pay => {
+            // 1. Payment Method Filter
+            if (currentPayMethodFilter !== 'all') {
+                const payMethod = (pay.method || 'PIX').toUpperCase();
+                if (payMethod !== currentPayMethodFilter.toUpperCase()) {
+                    return false;
+                }
+            }
+
+            // 2. Date Filter
+            if (pay.created_at) {
+                const payDate = new Date(pay.created_at);
+                payDate.setHours(0, 0, 0, 0);
+
+                if (startDateVal) {
+                    const startDate = new Date(startDateVal);
+                    startDate.setHours(0, 0, 0, 0);
+                    if (payDate < startDate) return false;
+                }
+
+                if (endDateVal) {
+                    const endDate = new Date(endDateVal);
+                    endDate.setHours(23, 59, 59, 999);
+                    if (payDate > endDate) return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Sort data
+        filteredPayments.sort((a, b) => {
+            const dateA = new Date(a.created_at || 0);
+            const dateB = new Date(b.created_at || 0);
+            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+
+        if (filteredPayments.length === 0) {
+            container.innerHTML = '<p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Nenhum pagamento corresponde aos filtros.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        filteredPayments.forEach(pay => {
+            const date = new Date(pay.created_at);
+            const formattedDate = date.toLocaleDateString('pt-BR');
+            const expiry = pay.expiry_date ? new Date(pay.expiry_date).toLocaleDateString('pt-BR') : '--';
+            const value = pay.amount ? (pay.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 19,90';
+
+            const div = document.createElement('div');
+            div.style.background = 'rgba(255, 255, 255, 0.03)';
+            div.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+            div.style.borderRadius = '8px';
+            div.style.padding = '12px';
+            div.style.fontSize = '12px';
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+
+            div.innerHTML = `
+                <div>
+                    <strong style="color: white; display: block; font-size: 13px;">Acesso VIP 30 Dias</strong>
+                    <span class="text-caption" style="font-size: 10px; display: block; margin-top: 4px;">
+                        Pago em: ${formattedDate} | Válido até: ${expiry}
+                    </span>
+                </div>
+                <div style="text-align: right;">
+                    <strong style="color: #00ff88; display: block; font-size: 13px;">${value}</strong>
+                    <span class="badge-alert" style="background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); font-size: 8px; padding: 1px 4px; border-radius: 4px; display: inline-block; margin-top: 4px;">
+                        ${pay.method || 'PIX'}
+                    </span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+    } catch (err) {
+        container.innerHTML = `<p class="text-caption" style="text-align: center; color: var(--danger); padding: 10px;">Erro ao processar filtros: ${err.message}</p>`;
+    }
+}
+
+// =============================================
+// CONTROLE DE FILTROS DO FATURAMENTO (GANHOS)
+// =============================================
+function setBillingFilterPreset(preset) {
+    const startInput = document.getElementById('billing-filter-start');
+    const endInput = document.getElementById('billing-filter-end');
+    if (!startInput || !endInput) return;
+
+    const now = new Date();
+    let startStr = '';
+    let endStr = now.toISOString().split('T')[0];
+
+    if (preset === 'month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startStr = firstDay.toISOString().split('T')[0];
+    } else if (preset === '30') {
+        const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startStr = past.toISOString().split('T')[0];
+    } else if (preset === '7') {
+        const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startStr = past.toISOString().split('T')[0];
+    } else if (preset === 'all') {
+        startStr = '';
+        endStr = '';
+    }
+
+    startInput.value = startStr;
+    endInput.value = endStr;
+
+    // Update active class on chips
+    document.querySelectorAll('#view-billing .btn-chip').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById(`btn-bill-filter-${preset}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    renderBilling();
+}
+
+function applyBillingFilters() {
+    // Remove active class from presets because user is selecting manually
+    document.querySelectorAll('#view-billing .btn-chip').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    renderBilling();
 }

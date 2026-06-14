@@ -9,7 +9,7 @@ const db = admin.firestore();
 // API Key da AbacatePay (Definida no Firebase Config ou via variável de ambiente)
 // Para testes, o desenvolvedor pode cadastrar com: firebase functions:config:set abacatepay.key="SUA_CHAVE"
 // Ou definir no ambiente de execução. Adicionamos um fallback caso queira testar diretamente.
-const ABACATEPAY_API_KEY = process.env.ABACATEPAY_API_KEY || functions.config().abacatepay?.key || "abc_dev_T0KpEquNjUN3JKb5HtW51ZfD";
+const ABACATEPAY_API_KEY = process.env.ABACATEPAY_API_KEY || functions.config().abacatepay?.key || "abc_dev_Fgk0nmnhzTjMYpJtAx14qXRy";
 
 /**
  * Função: createCheckout
@@ -110,6 +110,17 @@ exports.webhook = functions.https.onRequest(async (req, res) => {
         current_period_end: periodEndISO,
         updated_at: now.toISOString()
       }, { merge: true });
+
+      // Salva o histórico de pagamento
+      await db.collection("payments").add({
+        user_id: userId,
+        payment_id: paymentData.id || event.id || "",
+        amount: paymentData.amount || 1990, // em centavos
+        method: paymentData.methods ? paymentData.methods[0] : (paymentData.method || "PIX"),
+        status: "PAID",
+        created_at: now.toISOString(),
+        expiry_date: periodEndISO
+      });
 
       console.log(`VIP ativado com sucesso para o usuário ${userId} até ${periodEndISO}`);
     }

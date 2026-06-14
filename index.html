@@ -281,7 +281,7 @@
             </div>
 
             <!-- FINANCIAL SUMMARY CARD (Merged Revenue & Expenses) -->
-            <div class="glass-card card-compact" style="border-left: 4px solid #00f2ff; margin-bottom: 8px;">
+            <div class="glass-card card-compact" style="border-left: 4px solid #00f2ff; margin-bottom: 8px; cursor: pointer;" onclick="switchView('billing')">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
                         <label class="text-caption"
@@ -615,6 +615,20 @@
                         </div>
                     </div>
 
+                    <div class="glass-card" onclick="openPaymentHistoryDetailModal()"
+                        style="margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); padding: 20px; cursor: pointer;">
+                        <h3 class="text-caption"
+                            style="margin-bottom: 16px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="receipt" style="width: 16px; height: 16px; color: var(--accent-orange);"></i>
+                            Histórico de Faturamento
+                        </h3>
+                        <div id="payment-history-list"
+                            style="display: flex; flex-direction: column; gap: 10px; max-height: 120px; overflow: hidden; pointer-events: none;">
+                            <p class="text-caption" style="text-align: center; opacity: 0.5; padding: 10px;">Nenhum pagamento registrado.</p>
+                        </div>
+                        <p class="text-caption" style="text-align: center; margin-top: 10px; font-size: 11px; color: var(--accent-orange); font-weight: 600;">Clique para expandir e filtrar →</p>
+                    </div>
+
                     <div class="glass-card" style="border: 1px solid rgba(255, 71, 87, 0.3);">
                         <h3 class="text-caption"
                             style="margin-bottom: 12px; text-transform: uppercase; color: var(--danger);">Zona de Perigo
@@ -732,6 +746,27 @@
                 <p class="text-caption" style="color: rgba(0,0,0,0.6); text-transform: uppercase; font-weight: 700;">
                     Total de Ganhos</p>
                 <div id="stat-billing-total" class="title-large" style="font-size: 32px; margin-top: 8px;">R$ 0,00</div>
+            </div>
+
+            <!-- FILTROS DE DATAS -->
+            <div class="glass-card" style="margin-bottom: 20px; padding: 15px;">
+                <label class="text-caption" style="text-transform: uppercase; font-weight: 700; margin-bottom: 8px; display: block;">Filtrar Período</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <button type="button" class="btn-chip active" id="btn-bill-filter-month" onclick="setBillingFilterPreset('month')" style="padding: 6px 12px; font-size: 11px;">Este Mês</button>
+                    <button type="button" class="btn-chip" id="btn-bill-filter-30" onclick="setBillingFilterPreset('30')" style="padding: 6px 12px; font-size: 11px;">30 Dias</button>
+                    <button type="button" class="btn-chip" id="btn-bill-filter-7" onclick="setBillingFilterPreset('7')" style="padding: 6px 12px; font-size: 11px;">7 Dias</button>
+                    <button type="button" class="btn-chip" id="btn-bill-filter-all" onclick="setBillingFilterPreset('all')" style="padding: 6px 12px; font-size: 11px;">Todos</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 10px; font-weight: 700;">DE</label>
+                        <input type="date" id="billing-filter-start" class="form-control" onchange="applyBillingFilters()" style="padding: 8px; font-size: 12px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 10px; font-weight: 700;">ATÉ</label>
+                        <input type="date" id="billing-filter-end" class="form-control" onchange="applyBillingFilters()" style="padding: 8px; font-size: 12px;">
+                    </div>
+                </div>
             </div>
 
             <h3 class="text-caption" style="margin-bottom: 12px; text-transform: uppercase; font-weight: 700;">Resumo
@@ -1468,6 +1503,49 @@
                         }
                     }
                 </style>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico de Pagamentos Detalhado -->
+    <div id="modal-payment-history-detail" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; padding: 20px; align-items: center; justify-content: center; display: none;">
+        <div class="glass-card" style="width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="title-large" style="font-size: 18px; color: white; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="receipt" style="width: 20px; height: 20px; color: var(--accent-orange);"></i>
+                    Faturas & Assinaturas
+                </h3>
+                <button onclick="closePaymentHistoryDetailModal()" class="btn-icon" style="background: rgba(255,255,255,0.05); color: #888; border: none; padding: 6px; cursor: pointer;"><i data-lucide="x"></i></button>
+            </div>
+
+            <!-- Filters -->
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 9px; font-weight: 700; color: #888;">DE</label>
+                        <input type="date" id="pay-filter-start" class="form-control" onchange="renderDetailedPayments()" style="padding: 6px; font-size: 11px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 9px; font-weight: 700; color: #888;">ATÉ</label>
+                        <input type="date" id="pay-filter-end" class="form-control" onchange="renderDetailedPayments()" style="padding: 6px; font-size: 11px;">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" class="btn-chip active" id="btn-pay-method-all" onclick="setPayMethodFilter('all')" style="padding: 4px 8px; font-size: 10px;">Todos</button>
+                        <button type="button" class="btn-chip" id="btn-pay-method-pix" onclick="setPayMethodFilter('PIX')" style="padding: 4px 8px; font-size: 10px;">PIX</button>
+                        <button type="button" class="btn-chip" id="btn-pay-method-card" onclick="setPayMethodFilter('CARD')" style="padding: 4px 8px; font-size: 10px;">Cartão</button>
+                    </div>
+                    <select id="pay-sort-order" onchange="renderDetailedPayments()" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 6px; padding: 4px 8px; font-size: 10px; cursor: pointer; outline: none;">
+                        <option value="desc">Mais Recentes</option>
+                        <option value="asc">Mais Antigas</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- List container -->
+            <div id="detailed-payments-list" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Items go here -->
             </div>
         </div>
     </div>
