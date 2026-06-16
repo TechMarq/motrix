@@ -1043,9 +1043,21 @@ function updateDashboardUI() {
         const badge = document.getElementById('premium-badge');
         if (badge) {
             badge.style.display = 'block'; // Always visible to allow TESTER to toggle
-            badge.innerText = state.isPremium ? 'VIP' : 'TESTAR VIP';
-            badge.style.background = state.isPremium ? 'linear-gradient(135deg, #ffd700, #ff8c00)' : 'rgba(255,140,0,0.1)';
-            badge.style.color = state.isPremium ? 'black' : 'var(--accent-orange)';
+            if (state.isPremium) {
+                badge.innerText = 'VIP 👑';
+                badge.style.background = 'linear-gradient(135deg, #ffd700, #ff8c00)';
+                badge.style.color = 'black';
+                badge.style.boxShadow = 'none';
+                badge.style.animation = 'none';
+                badge.style.fontWeight = '700';
+            } else {
+                badge.innerText = 'SEJA VIP 👑';
+                badge.style.background = 'linear-gradient(135deg, #ff8c00, #ff0055)';
+                badge.style.color = 'white';
+                badge.style.boxShadow = '0 0 12px rgba(255, 0, 85, 0.4)';
+                badge.style.animation = 'pulse-vip 2s infinite';
+                badge.style.fontWeight = '800';
+            }
         }
         // Calculate "Real" current KM based on logs (highest value wins)
         const vehicleFuelLogsForKM = (state.fuelLogs || []).filter(l => l.vehicleId === state.activeVehicleId);

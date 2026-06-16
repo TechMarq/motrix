@@ -69,6 +69,15 @@ window.db = {
             } catch (error) {
                 return { data: null, error };
             }
+        },
+        async signInWithGoogle() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const userCredential = await auth.signInWithPopup(provider);
+                return { data: { user: userCredential.user }, error: null };
+            } catch (error) {
+                return { data: null, error };
+            }
         }
     },
     vehicles: {

@@ -537,4 +537,19 @@ body {
     display: flex !important;
 }
 
+@keyframes pulse-vip {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.6);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(255, 0, 85, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 0, 85, 0);
+    }
+}
+
 
