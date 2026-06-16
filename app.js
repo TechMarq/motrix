@@ -157,6 +157,7 @@ async function initializeApp() {
         lucide.createIcons();
         recalculateConsumptions();
         setBillingFilterPreset('month');
+        setCostsFilterPreset('month');
         switchView(state.currentView || 'dashboard');
         
         // Set default dates for forms
@@ -2002,12 +2003,25 @@ function renderCosts() {
     list.innerHTML = '';
     summary.innerHTML = '';
 
+    // Get filter dates
+    const startVal = document.getElementById('costs-filter-start')?.value;
+    const endVal = document.getElementById('costs-filter-end')?.value;
+    const startDate = startVal ? new Date(startVal + 'T00:00:00') : null;
+    const endDate = endVal ? new Date(endVal + 'T23:59:59') : null;
+
     // Calculate Totals
     let total = 0;
     const byType = {};
     
     state.costsLogs
         .filter(c => c.vehicleId === state.activeVehicleId || !c.vehicleId)
+        .filter(c => {
+            if (!c.date) return true;
+            const cDate = new Date(c.date);
+            if (startDate && cDate < startDate) return false;
+            if (endDate && cDate > endDate) return false;
+            return true;
+        })
         .forEach(c => {
         total += c.amount;
         byType[c.type] = (byType[c.type] || 0) + c.amount;
@@ -2046,6 +2060,13 @@ function renderCosts() {
     // Render History
     state.costsLogs
         .filter(c => c.vehicleId === state.activeVehicleId || !c.vehicleId)
+        .filter(c => {
+            if (!c.date) return true;
+            const cDate = new Date(c.date);
+            if (startDate && cDate < startDate) return false;
+            if (endDate && cDate > endDate) return false;
+            return true;
+        })
         .sort((a,b) => new Date(b.date) - new Date(a.date))
         .forEach(c => {
         const platformBadge = c.platform ? `<span style="display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; background: rgba(255,140,0,0.12); color: var(--accent-orange); border: 1px solid rgba(255,140,0,0.2);">${c.platform}</span>` : '';
@@ -2448,7 +2469,11 @@ function becomePremium() {
         // Reseta o estado do modal de pagamento para o padrão
         const btn = document.getElementById('btn-start-checkout');
         const pixArea = document.getElementById('pix-payment-area');
-        if (btn) btn.style.display = 'block';
+        
+        if (btn) {
+            btn.style.display = 'block';
+            btn.disabled = false;
+        }
         if (pixArea) pixArea.style.display = 'none';
 
         modal.style.display = 'flex';
@@ -2473,65 +2498,40 @@ async function startCheckout() {
 
     const btn = document.getElementById('btn-start-checkout');
     const loading = document.getElementById('checkout-loading');
+
     if (btn) btn.disabled = true;
     if (loading) loading.style.display = 'block';
 
     try {
-        // Busca dados do perfil para enviar à API de checkout transparente
-        let name = "";
-        let phone = "";
-        try {
-            const { data: cloudProfile } = await window.db.profile.get();
-            if (cloudProfile) {
-                name = cloudProfile.name || "";
-                phone = cloudProfile.phone || "";
-            }
-        } catch(e) { console.warn("Erro ao buscar perfil:", e); }
-
-        const functionUrl = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
-            ? "http://127.0.0.1:5001/motrix-18f53/us-central1/createPixPayment"
-            : "https://us-central1-motrix-18f53.cloudfunctions.net/createPixPayment";
-        
-        const response = await fetch(functionUrl, {
-            method: "POST",
+        const response = await fetch('https://us-central1-motrix-18f53.cloudfunctions.net/createCheckout', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json"
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 userId: user.uid,
                 email: user.email,
-                name: name,
-                phone: phone
+                originUrl: window.location.origin + window.location.pathname
             })
         });
 
         if (!response.ok) {
-            throw new Error("Erro na resposta do servidor de pagamento.");
+            let errorText = "Erro na resposta do servidor de pagamento.";
+            try {
+                const errData = await response.json();
+                if (errData && errData.error) {
+                    errorText = `${errData.error} - ${JSON.stringify(errData.details)}`;
+                }
+            } catch(e) {}
+            throw new Error(errorText);
         }
 
-        const data = await response.json();
-        if (data && data.brCode && data.brCodeBase64) {
-            if (btn) btn.style.display = 'none';
-            
-            const pixArea = document.getElementById('pix-payment-area');
-            const qrImage = document.getElementById('pix-qr-image');
-            const copiaCola = document.getElementById('pix-copia-cola-text');
-            
-            if (qrImage) qrImage.src = `data:image/png;base64,${data.brCodeBase64}`;
-            if (copiaCola) copiaCola.value = data.brCode;
-            if (pixArea) pixArea.style.display = 'block';
-
-            // Escuta atualizações do perfil em tempo real para ativar assim que o webhook atualizar
-            const userDocRef = firebase.firestore().collection('profiles').doc(user.uid);
-            const unsubscribe = userDocRef.onSnapshot(doc => {
-                if (doc.exists && doc.data().is_premium) {
-                    unsubscribe();
-                    alert("👑 Parabéns! Seu pagamento via PIX foi confirmado e o VIP foi ativado com sucesso!");
-                    location.reload();
-                }
-            });
+        const resData = await response.json();
+        if (resData.url) {
+            // Redirect the user to the Abacatepay hosted checkout page
+            window.location.href = resData.url;
         } else {
-            throw new Error("Dados de pagamento PIX não recebidos.");
+            throw new Error("URL de checkout não recebida.");
         }
 
     } catch (err) {
@@ -3022,4 +3022,51 @@ function applyBillingFilters() {
         btn.classList.remove('active');
     });
     renderBilling();
+}
+
+// =============================================
+// CONTROLE DE FILTROS DOS CUSTOS (DESPESAS)
+// =============================================
+function setCostsFilterPreset(preset) {
+    const startInput = document.getElementById('costs-filter-start');
+    const endInput = document.getElementById('costs-filter-end');
+    if (!startInput || !endInput) return;
+
+    const now = new Date();
+    let startStr = '';
+    let endStr = now.toISOString().split('T')[0];
+
+    if (preset === 'month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startStr = firstDay.toISOString().split('T')[0];
+    } else if (preset === '30') {
+        const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startStr = past.toISOString().split('T')[0];
+    } else if (preset === '7') {
+        const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startStr = past.toISOString().split('T')[0];
+    } else if (preset === 'all') {
+        startStr = '';
+        endStr = '';
+    }
+
+    startInput.value = startStr;
+    endInput.value = endStr;
+
+    // Update active class on chips
+    document.querySelectorAll('#view-costs .btn-chip').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.getElementById(`btn-cost-filter-${preset}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    renderCosts();
+}
+
+function applyCostsFilters() {
+    // Remove active class from presets because user is selecting manually
+    document.querySelectorAll('#view-costs .btn-chip').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    renderCosts();
 }

@@ -51,6 +51,7 @@ window.db = {
         },
         async logout() {
             await auth.signOut();
+            localStorage.removeItem('motrix_state');
             window.location.reload();
         },
         async getUser() {
