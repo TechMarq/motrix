@@ -67,8 +67,29 @@ async function initializeApp() {
 
         loadState(); // Offline data (if any)
         
-        // FETCH REALCLOUD PROFILE
-        const { data: cloudProfile } = await window.db.profile.get();
+        // FETCH REALCLOUD DATA IN PARALLEL
+        const [
+            resProfile,
+            resVehicles,
+            resFuel,
+            resMaint,
+            resCosts,
+            resBilling,
+            resDocs,
+            resJornadas
+        ] = await Promise.all([
+            window.db.profile.get(),
+            window.db.vehicles.getAll(),
+            window.db.fuel.getAll(),
+            window.db.maintenance.getAll(),
+            window.db.costs.getAll(),
+            window.db.billing.getAll(),
+            window.db.documents.getAll(),
+            window.db.jornadas.getAll()
+        ]);
+
+        // Process profile
+        const cloudProfile = resProfile.data;
         if (cloudProfile) {
             const now = new Date();
             const periodEnd = cloudProfile.current_period_end ? new Date(cloudProfile.current_period_end) : null;
@@ -83,8 +104,11 @@ async function initializeApp() {
             // Carrega o histórico de pagamentos do app na configuração
             loadPaymentHistory();
         }
-        const { data: cloudVehicles, error } = await window.db.vehicles.getAll();
-        if (!error && cloudVehicles) {
+
+        // Process vehicles
+        const cloudVehicles = resVehicles.data;
+        const vehiclesError = resVehicles.error;
+        if (!vehiclesError && cloudVehicles) {
             state.vehicles = cloudVehicles;
             // Map any old 'initialKm' fields to initial_km to keep front-end compatibility
             state.vehicles.forEach(v => {
@@ -99,8 +123,8 @@ async function initializeApp() {
             }
         }
 
-        // FETCH REALCLOUD FUEL & MAINTENANCE
-        const { data: cloudFuel } = await window.db.fuel.getAll();
+        // Process fuel logs
+        const cloudFuel = resFuel.data;
         if (cloudFuel) {
             state.fuelLogs = cloudFuel.map(f => ({
                 ...f,
@@ -108,7 +132,8 @@ async function initializeApp() {
             }));
         }
 
-        const { data: cloudMaint } = await window.db.maintenance.getAll();
+        // Process maintenance logs
+        const cloudMaint = resMaint.data;
         if (cloudMaint) {
             state.maintenanceLogs = cloudMaint.map(m => ({
                 ...m,
@@ -121,7 +146,8 @@ async function initializeApp() {
             }));
         }
         
-        const { data: cloudCosts } = await window.db.costs.getAll();
+        // Process costs logs
+        const cloudCosts = resCosts.data;
         if (cloudCosts) {
             state.costsLogs = cloudCosts.map(c => ({
                 ...c,
@@ -130,7 +156,8 @@ async function initializeApp() {
             }));
         }
 
-        const { data: cloudBilling } = await window.db.billing.getAll();
+        // Process billing logs
+        const cloudBilling = resBilling.data;
         if (cloudBilling) {
             state.billingLogs = cloudBilling.map(b => ({
                 ...b,
@@ -138,7 +165,8 @@ async function initializeApp() {
             }));
         }
 
-        const { data: cloudDocs } = await window.db.documents.getAll();
+        // Process documents
+        const cloudDocs = resDocs.data;
         if (cloudDocs) {
             state.documents = cloudDocs.map(d => ({
                 ...d,
@@ -147,7 +175,8 @@ async function initializeApp() {
             }));
         }
 
-        const { data: cloudJornadas } = await window.db.jornadas.getAll();
+        // Process jornadas
+        const cloudJornadas = resJornadas.data;
         if (cloudJornadas) {
             state.jornadas = cloudJornadas;
             state.activeJornada = state.jornadas.find(j => j.status === 'active') || null;
@@ -158,7 +187,7 @@ async function initializeApp() {
         recalculateConsumptions();
         setBillingFilterPreset('month');
         setCostsFilterPreset('month');
-        switchView(state.currentView || 'dashboard');
+        switchView('dashboard');
         
         // Set default dates for forms
         const today = new Date().toISOString().split('T')[0];
