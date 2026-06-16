@@ -2496,6 +2496,13 @@ async function startCheckout() {
         return;
     }
 
+    const cpfInput = document.getElementById('checkout-cpf');
+    const taxId = cpfInput ? cpfInput.value.replace(/\D/g, "") : "";
+    if (taxId.length !== 11) {
+        alert("Por favor, insira um CPF válido com 11 dígitos para emissão do PIX.");
+        return;
+    }
+
     const btn = document.getElementById('btn-start-checkout');
     const loading = document.getElementById('checkout-loading');
 
@@ -2503,6 +2510,19 @@ async function startCheckout() {
     if (loading) loading.style.display = 'block';
 
     try {
+        // Busca o nome e telefone mais recentes do perfil do usuário
+        let name = user.displayName || "Motorista Motrix";
+        let phone = "";
+        try {
+            const { data: cloudProfile } = await window.db.profile.get();
+            if (cloudProfile) {
+                if (cloudProfile.name) name = cloudProfile.name;
+                if (cloudProfile.phone) phone = cloudProfile.phone;
+            }
+        } catch (profileErr) {
+            console.warn("Erro ao buscar dados adicionais do perfil:", profileErr);
+        }
+
         const response = await fetch('https://us-central1-motrix-18f53.cloudfunctions.net/createCheckout', {
             method: 'POST',
             headers: {
@@ -2511,6 +2531,9 @@ async function startCheckout() {
             body: JSON.stringify({
                 userId: user.uid,
                 email: user.email,
+                name: name,
+                phone: phone,
+                taxId: taxId,
                 originUrl: window.location.origin + window.location.pathname
             })
         });
